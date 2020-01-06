@@ -134,6 +134,11 @@ class DicomInput {
         }
 
         @Override
+        public byte[] byteValues() {
+            return cache.bytesAt(valuePos, valueLen);
+        }
+
+        @Override
         public void writeValueTo(DicomOutputStream dos) throws IOException {
             if (encoding.byteOrder == dos.getEncoding().byteOrder || vr.type.toggleByteOrder() == null) {
                 cache.writeBytesTo(valuePos, valueLen, dos);

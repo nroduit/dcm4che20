@@ -20,6 +20,14 @@ public interface VRType {
     default String delimiters() {
         throw new UnsupportedOperationException();
     }
+    
+    default byte[] byteValue(DicomInput input, long valpos, int vallen) {
+        return DicomElement.EMPTY_BYTES;
+    }
+    
+    default byte[] byteValue(byte[] value) {
+        return value;
+    }
 
     default StringBuilder appendValue(DicomInput dicomInput, long valuePos, int valueLen, DicomObject dcmobj,
                                       StringBuilder appendTo, int maxLength) {
@@ -59,6 +67,11 @@ public interface VRType {
     default void forEachIntValue(DicomElement dcmElm, IntConsumer action) {}
 
     default void forEachDoubleValue(DicomElement dcmElm, DoubleConsumer action) {}
+
+    
+    default byte[] byteValues(DicomInput input, long valpos, int vallen) {
+        return DicomElement.EMPTY_BYTES;
+    }
 
     default OptionalInt intValue(DicomInput input, long valuePos, int valueLen, int index) {
         return OptionalInt.empty();
