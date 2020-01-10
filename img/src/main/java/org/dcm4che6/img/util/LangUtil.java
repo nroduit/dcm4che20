@@ -2,6 +2,7 @@ package org.dcm4che6.img.util;
 
 import java.util.Collections;
 import java.util.OptionalDouble;
+import java.util.OptionalInt;
 /**
  * @author Nicolas Roduit
  *
@@ -31,5 +32,9 @@ public class LangUtil {
 
     public static OptionalDouble getOptionalDouble(Double val) {
         return val == null ? OptionalDouble.empty() : OptionalDouble.of(val);
+    }
+    
+    public static OptionalInt getOptionalInteger(Integer val) {
+        return val == null ? OptionalInt.empty() : OptionalInt.of(val);
     }
 }

@@ -47,7 +47,7 @@ public class DicomOutputData {
         this(List.of(image), desc, tsuid);
     }
 
-    public void writCompressedImageData(DicomOutputStream dos, DicomImageWriteParam param) throws IOException {
+    public void writCompressedImageData(DicomOutputStream dos, DicomJpegWriteParam param) throws IOException {
         dos.writeHeader(Tag.PixelData, VR.OB, -1);
         dos.writeHeader(Tag.Item, VR.NONE, 0);
 

@@ -115,5 +115,25 @@ public final class FileUtil {
         }
         return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
     }
+    
+    public static File getOutputFile(File src, File dst) {
+        if (dst.isDirectory()) {
+            return new File(dst.getPath(), src.getName());
+        } else {
+            return dst;
+        }
+    }
+
+    public static File addFileSuffix(File file, String suffix) {
+        if (!StringUtil.hasText(suffix)) {
+            return file;
+        }
+        String path = file.getPath();
+        int i = path.lastIndexOf('.');
+        if (i > 0) {
+            return new File(path.substring(0, i) + "-" + suffix + path.substring(i));
+        }
+        return new File(file.getPath() + suffix);
+    }
 
 }

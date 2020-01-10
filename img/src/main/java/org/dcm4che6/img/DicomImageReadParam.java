@@ -4,7 +4,6 @@ import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.util.Optional;
 import java.util.OptionalDouble;
-import java.util.OptionalInt;
 
 import javax.imageio.IIOParamController;
 import javax.imageio.ImageReadParam;
@@ -22,8 +21,7 @@ public class DicomImageReadParam extends ImageReadParam {
 
     private static final String NOT_COMPATIBLE = "Not compatible with the native DICOM Decoder";
 
-    private Boolean preserveRawImage;
-    private Integer jpegCompressionRatio;
+
     private Double windowCenter;
     private Double windowWidth;
     private Double levelMin;
@@ -91,20 +89,6 @@ public class DicomImageReadParam extends ImageReadParam {
         throw new UnsupportedOperationException(NOT_COMPATIBLE);
     }
 
-
-
-    public OptionalInt getJpegCompressionRatio() {
-        return jpegCompressionRatio == null ? OptionalInt.empty() : OptionalInt.of(jpegCompressionRatio);
-    }
-
-    /**
-     * @param jpegCompressionRatio
-     *            between 1 to 100 (100 is the best lossy quality).
-     */
-    public void setJpegCompressionRatio(Integer jpegCompressionRatio) {
-        this.jpegCompressionRatio = jpegCompressionRatio;
-    }
-
     public OptionalDouble getWindowCenter() {
         return LangUtil.getOptionalDouble(windowCenter);
     }
@@ -153,20 +137,7 @@ public class DicomImageReadParam extends ImageReadParam {
         this.levelMax = levelMax;
     }
 
-    public Optional<Boolean> isPreserveRawImage() {
-        return Optional.ofNullable(preserveRawImage);
-    }
-
-    /**
-     * It preserves the raw data without applying the window/level values. The default value is TRUE. False will apply
-     * W/L and the output image will be always a 8-bit per sample image.
-     * 
-     * @param preserveRawImage
-     */
-    public void setPreserveRawImage(Boolean preserveRawImage) {
-        this.preserveRawImage = preserveRawImage;
-    }
-
+ 
     public Optional<LutShape> getVoiLutShape() {
         return Optional.ofNullable(voiLutShape);
     }

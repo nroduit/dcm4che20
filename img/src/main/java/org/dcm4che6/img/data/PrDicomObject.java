@@ -1,5 +1,6 @@
 package org.dcm4che6.img.data;
 
+import java.io.FileInputStream;
 /**
  * @author Nicolas Roduit
  *
@@ -13,6 +14,7 @@ import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.DicomImageUtils;
 import org.dcm4che6.img.lut.ModalityLutModule;
 import org.dcm4che6.img.lut.VoiLutModule;
+import org.dcm4che6.io.DicomInputStream;
 import org.weasis.opencv.data.LookupTableCV;
 
 public class PrDicomObject {
@@ -102,4 +104,9 @@ public class PrDicomObject {
         return false;
     }
 
+    public static PrDicomObject getPresentationState(String prPath) throws Exception {
+        try (DicomInputStream dis = new DicomInputStream(new FileInputStream(prPath))) {
+            return new PrDicomObject(dis.readDataSet());
+        }
+    }
 }

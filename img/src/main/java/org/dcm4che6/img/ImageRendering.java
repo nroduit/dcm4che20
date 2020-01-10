@@ -22,7 +22,7 @@ public class ImageRendering {
     private ImageRendering() {
     }
 
-    public static PlanarImage getModalatyLutImage(final PlanarImage imageSource, ImageDescriptor desc,
+    public static PlanarImage getModalityLutImage(final PlanarImage imageSource, ImageDescriptor desc,
         DicomImageReadParam params) {
         if (imageSource == null) {
             return null;

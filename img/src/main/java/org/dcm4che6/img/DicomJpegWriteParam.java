@@ -9,7 +9,7 @@ import org.dcm4che6.img.data.TransferSyntaxType;
  * @author Nicolas Roduit
  *
  */
-public class DicomImageWriteParam {
+public class DicomJpegWriteParam {
     private final TransferSyntaxType type;
 
     /** JPEG lossless point transform (0..15, default: 0) */
@@ -20,7 +20,7 @@ public class DicomImageWriteParam {
     private boolean losslessCompression;
     private Rectangle sourceRegion;
 
-    DicomImageWriteParam(TransferSyntaxType type) {
+    DicomJpegWriteParam(TransferSyntaxType type) {
         this.type = type;
         this.prediction = 1;
         this.pointTransform = 0;
@@ -60,6 +60,10 @@ public class DicomImageWriteParam {
         return compressionQuality;
     }
 
+    /**
+     * @param compressionQuality
+     *            between 1 to 100 (100 is the best lossy quality).
+     */
     public void setCompressionQuality(int compressionQuality) {
         this.compressionQuality = compressionQuality;
     }
@@ -103,7 +107,7 @@ public class DicomImageWriteParam {
         return sourceRegion;
     }
 
-    public static DicomImageWriteParam buildDicomImageWriteParam(String tsuid) {
+    public static DicomJpegWriteParam buildDicomImageWriteParam(String tsuid) {
         TransferSyntaxType type = TransferSyntaxType.forUID(tsuid);
         switch (type) {
             case NATIVE:
@@ -112,7 +116,7 @@ public class DicomImageWriteParam {
             case MPEG:
                 throw new IllegalStateException(tsuid + " is not supported for compression!");
         }
-        DicomImageWriteParam param = new DicomImageWriteParam(type);
+        DicomJpegWriteParam param = new DicomJpegWriteParam(type);
         param.losslessCompression = !TransferSyntaxType.isLossyCompression(tsuid);
         param.setNearLosslessError(param.losslessCompression ? 0 : 2);
 
