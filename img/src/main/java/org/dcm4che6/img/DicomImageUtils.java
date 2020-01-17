@@ -11,6 +11,7 @@ import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.lut.LutParameters;
 import org.dcm4che6.img.lut.LutShape;
 import org.dcm4che6.util.TagUtils;
+import org.opencv.core.CvType;
 import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,8 +68,13 @@ public class DicomImageUtils {
             byte[] b = DicomImageUtils.lutData(ds, bDesc, Tag.BluePaletteColorLookupTableData,
                 Tag.SegmentedBluePaletteColorLookupTableData);
 
-            // Replace the original image with the RGB image.
-            return ImageProcessor.applyLUT(source.toMat(), new byte[][] { b, g, r });
+            if (source.depth() <= CvType.CV_8S) {
+                // Replace the original image with the RGB image.
+                return ImageProcessor.applyLUT(source.toMat(), new byte[][] { b, g, r });
+            } else {
+                LookupTableCV lookup = new LookupTableCV( new byte[][] { b, g, r });
+                return lookup.lookup(source.toMat());
+            }
         }
         return source;
     }
