@@ -19,6 +19,7 @@ public class DicomJpegWriteParam {
     private int compressionQuality;
     private boolean losslessCompression;
     private Rectangle sourceRegion;
+    private int compressionRatiofactor;
 
     DicomJpegWriteParam(TransferSyntaxType type) {
         this.type = type;
@@ -28,6 +29,7 @@ public class DicomJpegWriteParam {
         this.compressionQuality = 80;
         this.losslessCompression = true;
         this.sourceRegion = null;
+        this.compressionRatiofactor = 0;
     }
 
     public int getPrediction() {
@@ -68,6 +70,24 @@ public class DicomJpegWriteParam {
         this.compressionQuality = compressionQuality;
     }
 
+    public int getCompressionRatiofactor() {
+        return compressionRatiofactor;
+    }
+
+    /**
+     * JPEG-2000 Lossy compression ratio factor.
+     * 
+     * Visually near-lossless typically achieves compression ratios of 10:1 to 20:1 (e.g. compressionRatiofactor = 10)
+     *
+     * Lossy compression with acceptable degradation can have ratios of 50:1 to 100:1 (e.g. compressionRatiofactor = 50)
+     * 
+     * @param compressionRatiofactor
+     *            the compression ratio
+     */
+    public void setCompressionRatiofactor(int compressionRatiofactor) {
+        this.compressionRatiofactor = compressionRatiofactor;
+    }
+
     public TransferSyntaxType getType() {
         return type;
     }
@@ -75,7 +95,7 @@ public class DicomJpegWriteParam {
     public boolean isCompressionLossless() {
         return losslessCompression;
     }
-
+    
     public int getJpegMode() {
         switch (type) {
             case JPEG_BASELINE:
@@ -119,7 +139,7 @@ public class DicomJpegWriteParam {
         DicomJpegWriteParam param = new DicomJpegWriteParam(type);
         param.losslessCompression = !TransferSyntaxType.isLossyCompression(tsuid);
         param.setNearLosslessError(param.losslessCompression ? 0 : 2);
-
+        param.setCompressionRatiofactor(param.losslessCompression ? 0 : 10);
         if (type == TransferSyntaxType.JPEG_LOSSLESS) {
             param.setPointTransform(0);
             if (UID.JPEGLosslessNonHierarchical14.equals(tsuid)) {

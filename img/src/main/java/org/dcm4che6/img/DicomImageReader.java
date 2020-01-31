@@ -39,12 +39,14 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfInt;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.opencv.osgi.OpenCVNativeLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
+import org.weasis.opencv.op.ImageProcessor;
 
 /**
  * Reads image data from a DICOM object.
@@ -249,6 +251,12 @@ public class DicomImageReader extends ImageReader implements Closeable {
         if (getImageDescriptor().getPhotometricInterpretation() == PhotometricInterpretation.PALETTE_COLOR) {
             img = DicomImageUtils.getRGBImageFromPaletteColorModel(img, dis.getMetadata().getDicomObject());
         }
+        if(param.getSourceRegion() != null) {
+            img = ImageProcessor.crop(img.toMat(), param.getSourceRegion());
+        }
+        if(param.getSourceRenderSize() != null) {
+            img = ImageProcessor.scale(img.toMat(), param.getSourceRenderSize(), Imgproc.INTER_LANCZOS4);
+        }
 
         /*
          * Handle overlay in pixel data: extract the overlay, serialize it in a file and set all values to O in the
@@ -300,22 +308,21 @@ public class DicomImageReader extends ImageReader implements Closeable {
         String tsuid = dis.getMetadata().getTransferSyntaxUID().orElse(dis.getEncoding().transferSyntaxUID);
         TransferSyntaxType type = TransferSyntaxType.forUID(tsuid);
         boolean rawData = fragments.isEmpty() || type == TransferSyntaxType.NATIVE || type == TransferSyntaxType.RLE;
-        int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_IMREAD_SIGNED
-            : Imgcodecs.DICOM_IMREAD_UNSIGNED;
+        int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_FLAG_SIGNED
+            : Imgcodecs.DICOM_FLAG_UNSIGNED;
         if (!rawData && !TransferSyntaxType.isJpeg2000(tsuid) && ybr2rgb(desc.getPhotometricInterpretation(), seg)) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_YBR;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_YBR;
         }
         boolean bigendian = dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;
         if (bigendian) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_BIGENDIAN;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_BIGENDIAN;
         }
         if (floatPixData) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_FLOAT;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_FLOAT;
         }
         if (UID.RLELossless.equals(tsuid)) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_RLE;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_RLE;
         }
-        // TODO implement  param.getSourceRegion() & param.getSourceRenderSize()
 
         MatOfDouble positions = null;
         MatOfDouble lengths = null;
@@ -350,22 +357,21 @@ public class DicomImageReader extends ImageReader implements Closeable {
         String tsuid = bdis.getTransferSyntax();
         TransferSyntaxType type = TransferSyntaxType.forUID(tsuid);
         boolean rawData = type == TransferSyntaxType.NATIVE || type == TransferSyntaxType.RLE;
-        int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_IMREAD_SIGNED
-            : Imgcodecs.DICOM_IMREAD_UNSIGNED;
+        int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_FLAG_SIGNED
+            : Imgcodecs.DICOM_FLAG_UNSIGNED;
         if (!rawData && !TransferSyntaxType.isJpeg2000(tsuid) && bdis.forceYbrToRgbConversion()) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_YBR;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_YBR;
         }
         boolean bigendian = dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;
         if (bigendian) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_BIGENDIAN;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_BIGENDIAN;
         }
         if (floatPixData) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_FLOAT;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_FLOAT;
         }
         if (UID.RLELossless.equals(tsuid)) {
-            dcmFlags |= Imgcodecs.DICOM_IMREAD_RLE;
+            dcmFlags |= Imgcodecs.DICOM_FLAG_RLE;
         }
-        // TODO implement  param.getSourceRegion() & param.getSourceRenderSize()
 
         Mat buf = null;
         try {

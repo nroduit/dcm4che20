@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
 
-import javax.imageio.metadata.IIOInvalidTreeException;
 import javax.imageio.metadata.IIOMetadata;
 
 import org.dcm4che6.data.DicomObject;

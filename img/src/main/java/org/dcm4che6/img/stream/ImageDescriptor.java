@@ -38,7 +38,7 @@ public final class ImageDescriptor {
     private final int highBit;
 
     public ImageDescriptor(DicomObject dcm) {
-        this(dcm, -1);
+        this(dcm, 0);
     }
 
     public ImageDescriptor(DicomObject dcm, int bitsCompressed) {

@@ -10,8 +10,8 @@
 	<artifactId>dcm4che-img</artifactId>
 	<packaging>bundle</packaging>
 	<properties>
-		<weasis.version>3.5.4</weasis.version>
-		<weasis.opencv.native.version>4.1.1-dcm</weasis.opencv.native.version>
+		<weasis.version>3.6.0-rc1</weasis.version>
+		<weasis.opencv.native.version>4.2.0-dcm</weasis.opencv.native.version>
 		<!-- Skip test by default except for some architecture related to the native library -->
 		<skipImgTests>false</skipImgTests>
 	</properties>

@@ -6,12 +6,9 @@ import java.awt.Polygon;
 import java.awt.Shape;
 import java.io.File;
 import java.text.DecimalFormat;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
-import org.dcm4che6.img.Transcoder.Format;
-import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.img.stream.ImageDescriptor;
 import org.dcm4che6.img.util.MathUtil;
@@ -38,18 +35,6 @@ class ImageRenderingTest {
         assertTrue(val[1][0] == 961.0);
         assertTrue(MathUtil.isEqual(val[2][0], 13.184417441029307));
         assertTrue(MathUtil.isEqual(val[3][0], 146.3726881826613));
-    }
-
-    @Test
-    public void getDefaultRenderedImage_ApllyPresentationState() throws Exception {
-        File in = new File(TranscoderTest.IN_DIR, "imgForPrLUT.dcm");
-        File inPr = new File(TranscoderTest.IN_DIR, "prLUTs.dcm");
-        DicomImageReadParam readParam = new DicomImageReadParam();
-        readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.getPath()));
-        ImageTranscodeParam params = new ImageTranscodeParam(readParam, Format.PNG);
-        List<File> outFiles = Transcoder.dcm2image(in.getPath(), TranscoderTest.OUT_DIR.getPath(), params);
-        assertTrue(!outFiles.isEmpty());
-        assertTrue(outFiles.stream().allMatch(f -> f.length() > 10000));
     }
 
     public static double[][] statistics(String srcPath, DicomImageReadParam params, Shape shape) throws Exception {

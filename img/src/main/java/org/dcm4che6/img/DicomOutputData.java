@@ -2,6 +2,7 @@ package org.dcm4che6.img;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Objects;
 
@@ -20,8 +21,6 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.opencv.data.PlanarImage;
-
-
 
 /**
  * @author Nicolas Roduit
@@ -47,49 +46,14 @@ public class DicomOutputData {
         this(List.of(image), desc, tsuid);
     }
 
-    public void writCompressedImageData(DicomOutputStream dos, DicomJpegWriteParam param) throws IOException {
+    public void writCompressedImageData(DicomOutputStream dos, int[] params) throws IOException {
         dos.writeHeader(Tag.PixelData, VR.OB, -1);
         dos.writeHeader(Tag.Item, VR.NONE, 0);
 
         Mat buf = null;
         MatOfInt dicomParams = null;
         try {
-            Mat mat = images.get(0).toMat();
-            int cvType = mat.type();
-            int elemSize = (int) mat.elemSize1();
-            int channels = CvType.channels(cvType);
-            int dcmFlags =
-                CvType.depth(cvType) == CvType.CV_16S ? Imgcodecs.DICOM_IMREAD_SIGNED : Imgcodecs.DICOM_IMREAD_UNSIGNED;
-
-            int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
-            TransferSyntaxType type = param.getType();
-            int compressType = Imgcodecs.DICOM_CP_JPG;
-            if (type == TransferSyntaxType.JPEG_2000) {
-                compressType = Imgcodecs.DICOM_CP_J2K;
-            } else if (type == TransferSyntaxType.JPEG_LS) {
-                compressType = Imgcodecs.DICOM_CP_JPLS;
-            }
-
-            int[] params = new int[15];
-            params[Imgcodecs.DICOM_PARAM_IMREAD] = Imgcodecs.IMREAD_UNCHANGED; // Image flags
-            params[Imgcodecs.DICOM_PARAM_DCM_IMREAD] = dcmFlags; // DICOM flags
-            params[Imgcodecs.DICOM_PARAM_WIDTH] = mat.width(); // Image width
-            params[Imgcodecs.DICOM_PARAM_HEIGHT] = mat.height(); // Image height
-            params[Imgcodecs.DICOM_PARAM_COMPRESSION] = compressType; // Type of compression
-            params[Imgcodecs.DICOM_PARAM_COMPONENTS] = channels; // Number of components
-            params[Imgcodecs.DICOM_PARAM_BITS_PER_SAMPLE] = desc.getBitsCompressed(); // Bits per sample
-            params[Imgcodecs.DICOM_PARAM_INTERLEAVE_MODE] = Imgcodecs.ILV_SAMPLE; // Interleave mode
-            params[Imgcodecs.DICOM_PARAM_BYTES_PER_LINE] = mat.width() * elemSize; // Bytes per line
-            params[Imgcodecs.DICOM_PARAM_ALLOWED_LOSSY_ERROR] = param.getNearLosslessError(); // Allowed lossy error
-                                                                                              // for jpeg-ls
-            params[Imgcodecs.DICOM_PARAM_COLOR_MODEL] = epi; // Photometric interpretation
-            params[Imgcodecs.DICOM_PARAM_JPEG_MODE] = param.getJpegMode(); // JPEG Codec mode
-            params[Imgcodecs.DICOM_PARAM_JPEG_QUALITY] = param.getCompressionQuality(); // JPEG lossy quality
-            params[Imgcodecs.DICOM_PARAM_JPEG_PREDICTION] = param.getPrediction(); // JPEG lossless prediction
-            params[Imgcodecs.DICOM_PARAM_JPEG_PT_TRANSFORM] = param.getPointTransform(); // JPEG lossless
-                                                                                         // transformation point
             dicomParams = new MatOfInt(params);
-
             for (PlanarImage image : images) {
                 buf = Imgcodecs.dicomJpgWrite(DicomImageUtils.bgr2rgb(image).toMat(), dicomParams, "");
                 if (buf.empty()) {
@@ -161,14 +125,25 @@ public class DicomOutputData {
 
         try {
             // TODO try to not handle multiframe in memory
+
+            // TODO improve me
             PlanarImage img = images.get(0);
-            int imgSize = img.width() * img.height() * (int) img.elemSize();
-            ByteBuffer buf = ByteBuffer.allocate(images.size() * imgSize);
+            int type = CvType.depth(img.type());
+            int imgSize = img.width() * img.height();
+            ByteBuffer buf = ByteBuffer.allocate(images.size() * imgSize * (int) img.elemSize());
+            buf.order(ByteOrder.LITTLE_ENDIAN);
+
             for (PlanarImage image : images) {
-                byte[] bSrcData = new byte[imgSize];
                 img = DicomImageUtils.bgr2rgb(image);
-                img.get(0, 0, bSrcData);
-                buf.put(bSrcData);
+                if (type <= CvType.CV_8S) {
+                    byte[] bSrcData = new byte[imgSize];
+                    img.get(0, 0, bSrcData);
+                    buf.put(bSrcData);
+                } else if (type <= CvType.CV_16S) {
+                    short[] bSrcData = new short[imgSize];
+                    img.get(0, 0, bSrcData);
+                    buf.asShortBuffer().put(bSrcData);
+                }
             }
             data.setBytes(Tag.PixelData, VR.OB, buf.array());
             adaptTagsToImage(data, images.get(0), desc);
@@ -179,19 +154,98 @@ public class DicomOutputData {
     }
 
     public static void adaptTagsToImage(DicomObject data, PlanarImage img, ImageDescriptor desc) {
+        int cvType = img.type();
+        int channels = CvType.channels(cvType);
+        int signed = CvType.depth(cvType) == CvType.CV_16S ? 1 : 0;
         data.setInt(Tag.Columns, VR.US, img.width());
         data.setInt(Tag.Rows, VR.US, img.height());
-        data.setInt(Tag.SamplesPerPixel, VR.US, img.channels());
+        data.setInt(Tag.SamplesPerPixel, VR.US, channels);
         data.setInt(Tag.BitsAllocated, VR.US, desc.getBitsAllocated());
         data.setInt(Tag.BitsStored, VR.US, desc.getBitsStored());
         data.setInt(Tag.HighBit, VR.US, desc.getBitsStored() - 1);
-        data.setInt(Tag.PixelRepresentation, VR.US, desc.isSigned() ? 1 : 0);
+        data.setInt(Tag.PixelRepresentation, VR.US, signed);
         String pmi = desc.getPhotometricInterpretation().toString();
         if (img.channels() > 1) {
             pmi = PhotometricInterpretation.RGB.toString();
             data.setInt(Tag.PlanarConfiguration, VR.US, 0);
         }
         data.setString(Tag.PhotometricInterpretation, VR.CS, pmi);
+    }
+
+    public static int[] adaptTagsToImage(DicomObject data, PlanarImage img, ImageDescriptor desc,
+        DicomJpegWriteParam param) {
+
+        int cvType = img.type();
+        int elemSize = (int) img.elemSize1();
+        int channels = CvType.channels(cvType);
+        int  depth = CvType.depth(cvType);
+        boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U ;
+        int dcmFlags = signed ? Imgcodecs.DICOM_FLAG_SIGNED : Imgcodecs.DICOM_FLAG_UNSIGNED;
+        int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
+        int bitAllocated = elemSize * 8;
+        int bitCompressed = desc.getBitsCompressed();
+        if(bitCompressed > bitAllocated) {
+            bitCompressed = bitAllocated;
+        }
+        int bitCompressedForEncoder = bitCompressed;
+        int jpeglsNLE = param.getNearLosslessError();
+        TransferSyntaxType tsuid = param.getType();
+        int compressType = Imgcodecs.DICOM_CP_JPG;
+        if (tsuid == TransferSyntaxType.JPEG_2000) {
+            compressType = Imgcodecs.DICOM_CP_J2K;
+        } else if (tsuid == TransferSyntaxType.JPEG_LS) {
+            compressType = Imgcodecs.DICOM_CP_JPLS;
+            if (signed) {
+                LOGGER.warn("Force compression to JPEG-LS lossless as lossy is not adapted to signed data.");
+                jpeglsNLE = 0;
+                bitCompressedForEncoder = 16; // Extend to bit allocated to avoid exception as negative values are treated as
+                                    // large positive values
+            }
+        }
+        else {
+            // JPEG encoder
+            if (bitCompressed <= 8) {
+                bitCompressed = 8;
+            } else if (bitCompressed <= 12) {
+                bitCompressed = 12;
+            } else {
+                bitCompressed = 16;
+            }
+            bitCompressedForEncoder = bitCompressed;
+        }
+
+        int[] params = new int[15];
+        params[Imgcodecs.DICOM_PARAM_IMREAD] = Imgcodecs.IMREAD_UNCHANGED; // Image flags
+        params[Imgcodecs.DICOM_PARAM_DCM_IMREAD] = dcmFlags; // DICOM flags
+        params[Imgcodecs.DICOM_PARAM_WIDTH] = img.width(); // Image width
+        params[Imgcodecs.DICOM_PARAM_HEIGHT] = img.height(); // Image height
+        params[Imgcodecs.DICOM_PARAM_COMPRESSION] = compressType; // Type of compression
+        params[Imgcodecs.DICOM_PARAM_COMPONENTS] = channels; // Number of components
+        params[Imgcodecs.DICOM_PARAM_BITS_PER_SAMPLE] = bitCompressedForEncoder; // Bits per sample
+        params[Imgcodecs.DICOM_PARAM_INTERLEAVE_MODE] = Imgcodecs.ILV_SAMPLE; // Interleave mode
+        params[Imgcodecs.DICOM_PARAM_COLOR_MODEL] = epi; // Photometric interpretation
+        params[Imgcodecs.DICOM_PARAM_JPEG_MODE] = param.getJpegMode(); // JPEG Codec mode
+        params[Imgcodecs.DICOM_PARAM_JPEGLS_LOSSY_ERROR] = jpeglsNLE; // Lossy error for jpeg-ls
+        params[Imgcodecs.DICOM_PARAM_J2K_COMPRESSION_FACTOR] = param.getCompressionRatiofactor(); // JPEG2000 factor of compression ratio
+        params[Imgcodecs.DICOM_PARAM_JPEG_QUALITY] = param.getCompressionQuality(); // JPEG lossy quality
+        params[Imgcodecs.DICOM_PARAM_JPEG_PREDICTION] = param.getPrediction(); // JPEG lossless prediction
+        params[Imgcodecs.DICOM_PARAM_JPEG_PT_TRANSFORM] = param.getPointTransform(); // JPEG lossless transformation point
+
+        data.setInt(Tag.Columns, VR.US, img.width());
+        data.setInt(Tag.Rows, VR.US, img.height());
+        data.setInt(Tag.SamplesPerPixel, VR.US, channels);
+        data.setInt(Tag.BitsAllocated, VR.US, bitAllocated);
+        data.setInt(Tag.BitsStored, VR.US, bitCompressed);
+        data.setInt(Tag.HighBit, VR.US, bitCompressed - 1);
+        data.setInt(Tag.PixelRepresentation, VR.US, signed ? 1 : 0);
+        String pmi = desc.getPhotometricInterpretation().toString();
+        if (img.channels() > 1) {
+            pmi = PhotometricInterpretation.RGB.toString();
+            data.setInt(Tag.PlanarConfiguration, VR.US, 0);
+        }
+        data.setString(Tag.PhotometricInterpretation, VR.CS, pmi);
+
+        return params;
     }
 
     public static boolean isNativeSyntax(String uid) {

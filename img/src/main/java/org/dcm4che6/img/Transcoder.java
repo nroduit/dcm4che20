@@ -117,7 +117,7 @@ public class Transcoder {
             }
 
             outFile = adaptFileExtension(FileUtil.getOutputFile(inFile, new File(dstPath)), ".dcm", ".dcm");
-            List<PlanarImage> images = reader.getPlanarImages(null);
+            List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
             String dstTsuid = params.getOutputTsuid();
             DicomOutputData imgData = new DicomOutputData(images, dicomMetaData.getImageDescriptor(), dstTsuid);
             try (DicomOutputStream dos = new DicomOutputStream(new FileOutputStream(outFile))) {
@@ -125,9 +125,10 @@ public class Transcoder {
                 if (DicomOutputData.isNativeSyntax(dstTsuid)) {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
-                    DicomOutputData.adaptTagsToImage(dataSet, images.get(0), dicomMetaData.getImageDescriptor());
+                    int[] jpegWriteParams = DicomOutputData.adaptTagsToImage(dataSet, images.get(0), dicomMetaData.getImageDescriptor(),
+                        params.getWriteJpegParam());
                     dos.writeDataSet(dataSet);
-                    imgData.writCompressedImageData(dos, params.getWriteJpegParam());
+                    imgData.writCompressedImageData(dos, jpegWriteParams);
                 }
             } catch (Exception e) {
                 LOGGER.error("Transcoding image data", e);
