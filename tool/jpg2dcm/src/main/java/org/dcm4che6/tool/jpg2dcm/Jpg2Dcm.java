@@ -121,8 +121,8 @@ public class Jpg2Dcm implements Callable<Integer> {
                 dos.writeHeader(Tag.SequenceDelimitationItem, VR.NONE, 0);
             }
         }
-        String cuid = fmi.getString(Tag.MediaStorageSOPClassUID).get();
-        String tsuid = fmi.getString(Tag.TransferSyntaxUID).get();
+        String cuid = fmi.getString(Tag.MediaStorageSOPClassUID).orElseThrow();
+        String tsuid = fmi.getString(Tag.TransferSyntaxUID).orElseThrow();
         System.out.println(String.format(
                 "Encapsulated %s to %s%n  SOP Class UID: %s - %s%n  Transfer Syntax UID: %s - %s%n",
                 jpgfile, dcmfile, cuid, UID.nameOf(cuid), tsuid, UID.nameOf(tsuid)));
