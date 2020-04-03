@@ -24,8 +24,13 @@ public class JPEGParser implements CompressedPixelParser {
     private final long codeStreamPosition;
     private long positionAfterAPP = -1L;
     private final Params params;
+    private final long channelLength;
 
     public JPEGParser(SeekableByteChannel channel) throws IOException {
+        this(channel, channel.size());
+    }
+    public JPEGParser(SeekableByteChannel channel, long channelLength) throws IOException {
+        this.channelLength = channelLength;
         seekCodeStream(channel);
         codeStreamPosition = channel.position();
         switch (readUShort(channel)) {
@@ -43,6 +48,11 @@ public class JPEGParser implements CompressedPixelParser {
     @Override
     public long getCodeStreamPosition() {
         return codeStreamPosition;
+    }
+    
+    
+    public Params getParams() {
+        return params;
     }
 
     @Override
@@ -87,11 +97,10 @@ public class JPEGParser implements CompressedPixelParser {
             return;
         }
 
-        long size = channel.size();
         long boxPos = channel.position();
         long boxLengthType;
         while (((boxLengthType = readLong(channel)) & 0xffffffff) != CONTIGUOUS_CODESTREAM_BOX) {
-            if ((boxPos += (boxLengthType >>> 32)) > size) {
+            if ((boxPos += (boxLengthType >>> 32)) > channelLength) {
                 channel.position(startPos);
                 return;
             }
@@ -152,7 +161,7 @@ public class JPEGParser implements CompressedPixelParser {
                     String.format("unexpected %2XH on position %d", v, channel.position() - 4));
     }
 
-    private interface Params {
+    public interface Params {
         int samplesPerPixel();
         int rows();
         int columns();
@@ -170,7 +179,7 @@ public class JPEGParser implements CompressedPixelParser {
         final ByteBuffer sosParams;
 
         JPEGParams(SeekableByteChannel channel) throws IOException {
-            Segment segment;
+            Segment segment = null;
             while (JPEG.isAPP((segment = nextSegment(channel)).marker)) {
                 skip(channel, segment.contentSize);
                 positionAfterAPP = channel.position();
@@ -246,7 +255,7 @@ public class JPEGParser implements CompressedPixelParser {
         final ByteBuffer codParams;
 
         JPEG2000Params(SeekableByteChannel channel) throws IOException {
-            Segment segment;
+            Segment segment = null;
             while ((segment = nextSegment(channel)).marker != JPEG.SIZ) {
                 skip(channel, segment.contentSize);
             }

@@ -1,5 +1,7 @@
 package org.dcm4che6.util;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -8,7 +10,14 @@ import java.util.Optional;
  * @since Jul 2018
  */
 public class StringUtils {
-
+    public static String LINE_SEPARATOR = AccessController.doPrivileged(
+        new PrivilegedAction<String>() {
+            @Override
+            public String run() {
+                return System.getProperty("line.separator");
+            }
+        }
+     );
     public static final String[] EMPTY_STRINGS = {};
 
     public enum Trim {

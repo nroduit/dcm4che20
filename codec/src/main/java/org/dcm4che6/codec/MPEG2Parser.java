@@ -49,7 +49,7 @@ public class MPEG2Parser implements CompressedPixelParser {
     private final int duration;
 
     public MPEG2Parser(SeekableByteChannel channel) throws IOException {
-        Packet packet;
+        Packet packet = null;
         while (!isVideoStream((packet = nextPacket(channel)).startCode)) {
             skip(channel, packet.length);
         }

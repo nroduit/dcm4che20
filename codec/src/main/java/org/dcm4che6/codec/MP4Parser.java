@@ -278,17 +278,19 @@ public class MP4Parser implements CompressedPixelParser {
     }
 
     private void parseVisualSampleEntry(SeekableByteChannel channel, Box box) throws IOException {
-        switch (box.type) {
-            case VisualSampleEntryTypeAVC1:
-                parseVisualSampleEntryHeader(channel, box);
-                parseAvcConfigurationBox(channel,
-                        findBox(channel, box.end, AvcConfigurationBoxType));
-                break;
-            case VisualSampleEntryTypeHVC1:
-                parseVisualSampleEntryHeader(channel, box);
-                parseHevcConfigurationBox(channel,
-                        findBox(channel, box.end, HevcConfigurationBoxType));
-                break;
+        if (box.type == VisualSampleEntryTypeAVC1 || box.type == VisualSampleEntryTypeHVC1) {
+            switch (box.type) {
+                case VisualSampleEntryTypeAVC1:
+                    parseVisualSampleEntryHeader(channel, box);
+                    parseAvcConfigurationBox(channel,
+                            findBox(channel, box.end, AvcConfigurationBoxType));
+                    break;
+                case VisualSampleEntryTypeHVC1:
+                    parseVisualSampleEntryHeader(channel, box);
+                    parseHevcConfigurationBox(channel,
+                            findBox(channel, box.end, HevcConfigurationBoxType));
+                    break;
+            }
         }
         channel.position(box.end);
     }

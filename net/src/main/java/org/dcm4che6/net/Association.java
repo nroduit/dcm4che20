@@ -84,6 +84,14 @@ public class Association extends TCPConnection<Association> {
         return asname != null ? asname : super.toString();
     }
 
+    public AAssociate.RQ getAarq() {
+        return aarq;
+    }
+    
+    public AAssociate.AC getAaac() {
+        return aaac;
+    }
+
     AAssociate.CommonExtendedNegotation commonExtendedNegotationFor(String cuid) {
         return aarq.getCommonExtendedNegotation(cuid);
     }

@@ -53,6 +53,10 @@ public class TCPConnector<T extends TCPConnection> implements Runnable {
         return conn.connected;
     }
 
+    public Selector getSelector() {
+        return selector;
+    }
+
     private void configure(ServerSocketChannel ssc, Connection conn) throws IOException {
         ssc.configureBlocking(false);
         SocketAddress local = serverBind(conn);
@@ -82,6 +86,7 @@ public class TCPConnector<T extends TCPConnection> implements Runnable {
         return new InetSocketAddress(conn.getHostname(), portOf(conn));
     }
 
+    @Override
     public void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
