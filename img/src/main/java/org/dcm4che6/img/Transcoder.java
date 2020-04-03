@@ -1,13 +1,14 @@
 package org.dcm4che6.img;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
+import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.io.DicomOutputStream;
@@ -63,14 +64,13 @@ public class Transcoder {
      * @return
      * @throws Exception
      */
-    public static List<File> dcm2image(String srcPath, String dstPath, ImageTranscodeParam params) throws Exception {
-        List<File> outFiles = new ArrayList<>();
+    public static List<Path> dcm2image(Path srcPath, Path dstPath, ImageTranscodeParam params) throws Exception {
+        List<Path> outFiles = new ArrayList<>();
         Format format = params.getFormat();
         try (DicomImageReader reader = new DicomImageReader(dicomImageReaderSpi)) {
             MatOfInt map = format == Format.JPEG
                 ? new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, getCompressionRatio(params)) : null;
-            File inFile = new File(srcPath);
-            reader.setInput(new DicomFileInputStream(inFile));
+            reader.setInput(new DicomFileInputStream(srcPath));
             int nbFrames = reader.getImageDescriptor().getFrames();
             for (int i = 0; i < nbFrames; i++) {
                 PlanarImage img = reader.getPlanarImage(i, params.getReadParam());
@@ -82,8 +82,8 @@ public class Transcoder {
                         ImageRendering.getDefaultRenderedImage(img, reader.getImageDescriptor(), params.getReadParam());
                 }
                 Integer index = nbFrames > 1 ? i + 1 : null;
-                File outFile = writeImage(img, FileUtil.getOutputFile(inFile, new File(dstPath)), format, map, index);
-                outFiles.add(outFile);
+                Path outPath = writeImage(img, FileUtil.getOutputPath(srcPath, dstPath), format, map, index);
+                outFiles.add(outPath);
             }
         }
         return outFiles;
@@ -101,11 +101,10 @@ public class Transcoder {
      *            the DICOM conversion parameters
      * @throws Exception
      */
-    public static File dcm2dcm(String srcPath, String dstPath, DicomTranscodeParam params) throws Exception {
-        File outFile = null;
+    public static Path dcm2dcm(Path srcPath, Path dstPath, DicomTranscodeParam params) throws Exception {
+        Path outPath = null;
         try (DicomImageReader reader = new DicomImageReader(dicomImageReaderSpi)) {
-            File inFile = new File(srcPath);
-            reader.setInput(new DicomFileInputStream(inFile));
+            reader.setInput(new DicomFileInputStream(srcPath));
 
             DicomMetaData dicomMetaData = reader.getStreamMetadata();
             DicomObject dataSet = DicomObject.newDicomObject();
@@ -116,17 +115,17 @@ public class Transcoder {
                 dataSet.add(el);
             }
 
-            outFile = adaptFileExtension(FileUtil.getOutputFile(inFile, new File(dstPath)), ".dcm", ".dcm");
+            outPath = adaptFileExtension(FileUtil.getOutputPath(srcPath, dstPath), ".dcm", ".dcm");
             List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
             String dstTsuid = params.getOutputTsuid();
             DicomOutputData imgData = new DicomOutputData(images, dicomMetaData.getImageDescriptor(), dstTsuid);
-            try (DicomOutputStream dos = new DicomOutputStream(new FileOutputStream(outFile))) {
+            try (DicomOutputStream dos = new DicomOutputStream(Files.newOutputStream(outPath))) {
                 dos.writeFileMetaInformation(dicomMetaData.getDicomObject().createFileMetaInformation(dstTsuid));
                 if (DicomOutputData.isNativeSyntax(dstTsuid)) {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
-                    int[] jpegWriteParams = DicomOutputData.adaptTagsToImage(dataSet, images.get(0), dicomMetaData.getImageDescriptor(),
-                        params.getWriteJpegParam());
+                    int[] jpegWriteParams = DicomOutputData.adaptTagsToImage(dataSet, images.get(0),
+                        dicomMetaData.getImageDescriptor(), params.getWriteJpegParam());
                     dos.writeDataSet(dataSet);
                     imgData.writCompressedImageData(dos, jpegWriteParams);
                 }
@@ -134,7 +133,17 @@ public class Transcoder {
                 LOGGER.error("Transcoding image data", e);
             }
         }
-        return outFile;
+        return outPath;
+    }
+
+    public static DicomOutputData dcm2dcm(BytesWithImageDescriptor desc, DicomTranscodeParam params) throws Exception {
+        try (DicomImageReader reader = new DicomImageReader(dicomImageReaderSpi)) {
+            reader.setInput(desc);
+
+            List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
+            String dstTsuid = params.getOutputTsuid();
+            return new DicomOutputData(images, desc.getImageDescriptor(), dstTsuid);
+        }
     }
 
     private static int getCompressionRatio(ImageTranscodeParam params) {
@@ -165,45 +174,41 @@ public class Transcoder {
         return value;
     }
 
-    private static File adaptFileExtension(File file, String inExt, String outExt) {
-        String suffix = FileUtil.getExtension(file.getName());
+    private static Path adaptFileExtension(Path path, String inExt, String outExt) {
+        String fname = path.getFileName().toString();
+        String suffix = FileUtil.getExtension(fname);
         if (suffix.equals(outExt)) {
-            return file;
+            return path;
         }
-        String name = file.getName();
-        if (name.endsWith(inExt)) {
-            return new File(file.getParent(), name.substring(0, name.length() - inExt.length()) + outExt);
+        if (suffix.endsWith(inExt)) {
+            return Path.of(path.getParent().toString(), fname.substring(0, fname.length() - inExt.length()) + outExt);
         }
-        return new File(file.getPath() + outExt);
+        return path.resolveSibling(fname + outExt);
     }
 
-    private static File adaptFileIndex(File file, Integer index) {
+    private static Path adaptFileIndex(Path path, Integer index) {
         if (index == null) {
-            return file;
+            return path;
         }
-        String si = String.format("-%03d", index);
-        String name = file.getName();
-        int i = name.lastIndexOf('.');
-        if (i > 0) {
-            return new File(file.getParent(), name.substring(0, i) + si + name.substring(i));
-        }
-        return new File(file.getPath() + si);
+
+        String insert = String.format("$1-%03d$2", index);
+        return path.resolveSibling(path.getFileName().toString().replaceFirst("(.*?)(\\.[^.]+)?$", insert));
     }
 
-    private static File writeImage(PlanarImage img, File file, Format ext, MatOfInt map, Integer index) {
-        File out = adaptFileExtension(file, ".dcm", ext.extension);
-        out = adaptFileIndex(out, index);
+    private static Path writeImage(PlanarImage img, Path path, Format ext, MatOfInt map, Integer index) {
+        Path outPath = adaptFileExtension(path, ".dcm", ext.extension);
+        outPath = adaptFileIndex(outPath, index);
         if (map == null) {
-            if (!ImageProcessor.writeImage(img.toMat(), out)) {
+            if (!ImageProcessor.writeImage(img.toMat(), outPath.toFile())) {
                 LOGGER.error("Cannot Transform to {} {}", ext, img);
-                FileUtil.delete(out);
+                FileUtil.delete(outPath);
             }
         } else {
-            if (!ImageProcessor.writeImage(img.toMat(), out, map)) {
+            if (!ImageProcessor.writeImage(img.toMat(), outPath.toFile(), map)) {
                 LOGGER.error("Cannot Transform to {} {}", ext, img);
-                FileUtil.delete(out);
+                FileUtil.delete(outPath);
             }
         }
-        return out;
+        return outPath;
     }
 }

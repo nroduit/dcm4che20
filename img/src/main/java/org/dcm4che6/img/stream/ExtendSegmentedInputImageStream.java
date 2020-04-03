@@ -1,6 +1,6 @@
 package org.dcm4che6.img.stream;
 
-import java.io.File;
+import java.nio.file.Path;
 
 
 /**
@@ -8,13 +8,13 @@ import java.io.File;
  * @since Mar 2018
  */
 public class ExtendSegmentedInputImageStream {
-    private final File file;
+    private final Path path;
     private final long[] segmentPositions;
     private final long[] segmentLengths;
     private final ImageDescriptor imageDescriptor;
 
-    public ExtendSegmentedInputImageStream(File file, long[] segmentPositions, int[] segmentLengths, ImageDescriptor imageDescriptor) {
-        this.file = file;
+    public ExtendSegmentedInputImageStream(Path path, long[] segmentPositions, int[] segmentLengths, ImageDescriptor imageDescriptor) {
+        this.path = path;
         this.segmentPositions = segmentPositions;
         this.segmentLengths = segmentLengths == null ? null : getDoubleArray(segmentLengths);
         this.imageDescriptor = imageDescriptor;
@@ -28,8 +28,8 @@ public class ExtendSegmentedInputImageStream {
         return segmentLengths;
     }
 
-    public File getFile() {
-        return file;
+    public Path getPath() {
+        return path;
     }
     
     public static double[] getDoubleArray(long[] array) {

@@ -1,7 +1,9 @@
 package org.dcm4che6.img.util;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
@@ -50,30 +52,28 @@ public final class FileUtil {
         }
     }
 
-    private static boolean deleteFile(File fileOrDirectory) {
+    private static boolean deleteFile(Path path) {
         try {
-            Files.delete(fileOrDirectory.toPath());
-        } catch (Exception e) {
+            return Files.deleteIfExists(path);
+        } catch (IOException e) {
             LOGGER.error("Cannot delete", e);
-            return false;
         }
-        return true;
+        return false;
     }
-
-    public static boolean delete(File fileOrDirectory) {
-        if (fileOrDirectory == null || !fileOrDirectory.exists()) {
-            return false;
+    
+    public static boolean delete(Path fileOrDirectory) {
+        if(!Files.isDirectory(fileOrDirectory)){
+            return deleteFile(fileOrDirectory);
         }
-
-        if (fileOrDirectory.isDirectory()) {
-            final File[] files = fileOrDirectory.listFiles();
-            if (files != null) {
-                for (File child : files) {
-                    delete(child);
-                }
-            }
+        
+        try {
+            Files.walk(fileOrDirectory)
+              .sorted(Comparator.reverseOrder()).forEach(FileUtil::deleteFile);
+            return true;
+        } catch (IOException e) {
+            LOGGER.error("Cannot delete", e);
         }
-        return deleteFile(fileOrDirectory);
+        return false;
     }
 
     public static String nameWithoutExtension(String fn) {
@@ -115,25 +115,12 @@ public final class FileUtil {
         }
         return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
     }
-    
-    public static File getOutputFile(File src, File dst) {
-        if (dst.isDirectory()) {
-            return new File(dst.getPath(), src.getName());
+
+    public static Path getOutputPath(Path src, Path dst) {
+        if (Files.isDirectory(dst)) {
+            return Path.of(dst.toString(), src.getFileName().toString());
         } else {
             return dst;
         }
     }
-
-    public static File addFileSuffix(File file, String suffix) {
-        if (!StringUtil.hasText(suffix)) {
-            return file;
-        }
-        String path = file.getPath();
-        int i = path.lastIndexOf('.');
-        if (i > 0) {
-            return new File(path.substring(0, i) + "-" + suffix + path.substring(i));
-        }
-        return new File(file.getPath() + suffix);
-    }
-
 }

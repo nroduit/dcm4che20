@@ -252,7 +252,7 @@ public class PresetWindowLevel {
         XMLStreamReader xmler = null;
         InputStream stream = null;
         try {
-            // TODO allow to override with a System property
+            // TODO convert in Path. Allow to override with a System property
             File file = new File(PresetWindowLevel.class.getResource("presets.xml").getFile());
             if (!file.canRead()) {
                 return Collections.emptyMap();

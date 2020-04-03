@@ -2,10 +2,8 @@ package org.dcm4che6.img.stream;
 
 import java.awt.image.DataBuffer;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -31,24 +29,21 @@ import org.weasis.opencv.op.ImageProcessor;
 public class DicomFileInputStream extends DicomInputStream implements ImageReaderDescriptor {
     private static final Logger LOGGER = LoggerFactory.getLogger(DicomFileInputStream.class);
 
-    private final File file;
+    private final Path path;
     private DicomMetaData metadata;
 
-    public DicomFileInputStream(File file) throws FileNotFoundException {
-        super(new FileInputStream(file));
-        this.file = file;
+
+    public DicomFileInputStream(Path path) throws IOException  {
+        super(Files.newInputStream(path));
+        this.path = path;
     }
 
-    public DicomFileInputStream(Path path) throws FileNotFoundException {
-        this(path.toFile());
+    public DicomFileInputStream(String path) throws IOException {
+        this(Path.of(path));
     }
 
-    public DicomFileInputStream(String path) throws FileNotFoundException {
-        this(new File(path));
-    }
-
-    public File getFile() {
-        return file;
+    public Path getPath() {
+        return path;
     }
 
     public DicomMetaData getMetadata() throws IOException {

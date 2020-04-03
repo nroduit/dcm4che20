@@ -46,6 +46,14 @@ public class DicomOutputData {
         this(List.of(image), desc, tsuid);
     }
 
+    public List<PlanarImage> getImages() {
+        return images;
+    }
+
+    public String getTsuid() {
+        return tsuid;
+    }
+
     public void writCompressedImageData(DicomOutputStream dos, int[] params) throws IOException {
         dos.writeHeader(Tag.PixelData, VR.OB, -1);
         dos.writeHeader(Tag.Item, VR.NONE, 0);
@@ -74,80 +82,35 @@ public class DicomOutputData {
         }
     }
 
-    protected void writRawImageData(DicomOutputStream dos, DicomObject data) {
-
-        // Issue store the initial colormodel?
-        // FileRawImage raw = null;
-        // try {
-        // raw = new FileRawImage(File.createTempFile("raw_", ".wcv"));
-        // try (FileOutputStream df = new FileOutputStream(raw.getFile(), true); FileChannel dfc = df.getChannel()) {
-        // for (int i = 0; i < images.size(); i++) {
-        // FileRawImage fimg = new FileRawImage(File.createTempFile("raw_", ".wcv"));
-        // try {
-        // if (!fimg.write(DicomImageUtils.bgr2rgb(images.get(i)))) {
-        // raw = null;
-        // break;
-        // } else {
-        // try (FileInputStream sf = new FileInputStream(fimg.getFile());
-        // FileChannel sfc = sf.getChannel()) {
-        // sfc.position(FileRawImage.HEADER_LENGTH);
-        // dfc.transferFrom(sfc, dfc.position(), sfc.size());
-        // }
-        // }
-        // } finally {
-        // FileUtil.delete(fimg.getFile());
-        // }
-        // }
-        // }
-        // if (raw != null) {
-        // long length = raw.getFile().length() - FileRawImage.HEADER_LENGTH;
-        // data.setBulkData(Tag.PixelData, VR.OB,
-        // raw.getFile().toURI().toString() + "#offset=" + FileRawImage.HEADER_LENGTH + "&length=" + length,
-        // null);
-        // }
-        // } catch (Exception e) {
-        // if (raw != null) {
-        // raw = null;
-        // }
-        // LOGGER.error("Writing raw pixel data", e);
-        // } finally {
-        // if (raw != null) {
-        // try {
-        // adaptTagsToImage(data, images.get(0), desc);
-        // dos.writeDataSet(data);
-        // } catch (Exception e) {
-        // LOGGER.error("Writing dicom dataSet", e);
-        // }
-        // FileUtil.delete(raw.getFile());
-        // }
-        // }
-        //
-
+    public void writRawImageData(DicomOutputStream dos, DicomObject data) {
         try {
-            // TODO try to not handle multiframe in memory
-
-            // TODO improve me
             PlanarImage img = images.get(0);
+            adaptTagsToImage(data, img, desc);
+            dos.writeDataSet(data);
+
             int type = CvType.depth(img.type());
             int imgSize = img.width() * img.height();
-            ByteBuffer buf = ByteBuffer.allocate(images.size() * imgSize * (int) img.elemSize());
-            buf.order(ByteOrder.LITTLE_ENDIAN);
+            int length = images.size() * imgSize * (int) img.elemSize();
+            dos.writeHeader(Tag.PixelData, VR.OB, length);
 
-            for (PlanarImage image : images) {
-                img = DicomImageUtils.bgr2rgb(image);
-                if (type <= CvType.CV_8S) {
-                    byte[] bSrcData = new byte[imgSize];
+            if (type <= CvType.CV_8S) {
+                byte[] bSrcData = new byte[imgSize];
+                for (PlanarImage image : images) {
+                    img = DicomImageUtils.bgr2rgb(image);
                     img.get(0, 0, bSrcData);
-                    buf.put(bSrcData);
-                } else if (type <= CvType.CV_16S) {
-                    short[] bSrcData = new short[imgSize];
+                    dos.write(bSrcData);
+                }
+            } else if (type <= CvType.CV_16S) {
+                short[] bSrcData = new short[imgSize];
+                ByteBuffer bb = ByteBuffer.allocate(bSrcData.length * 2);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                for (PlanarImage image : images) {
+                    img = DicomImageUtils.bgr2rgb(image);
                     img.get(0, 0, bSrcData);
-                    buf.asShortBuffer().put(bSrcData);
+                    bb.asShortBuffer().put(bSrcData);
+                    dos.write(bb.array());
                 }
             }
-            data.setBytes(Tag.PixelData, VR.OB, buf.array());
-            adaptTagsToImage(data, images.get(0), desc);
-            dos.writeDataSet(data);
         } catch (Exception e) {
             LOGGER.error("Writing raw pixel data", e);
         }
@@ -178,13 +141,13 @@ public class DicomOutputData {
         int cvType = img.type();
         int elemSize = (int) img.elemSize1();
         int channels = CvType.channels(cvType);
-        int  depth = CvType.depth(cvType);
-        boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U ;
+        int depth = CvType.depth(cvType);
+        boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U;
         int dcmFlags = signed ? Imgcodecs.DICOM_FLAG_SIGNED : Imgcodecs.DICOM_FLAG_UNSIGNED;
         int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
         int bitAllocated = elemSize * 8;
         int bitCompressed = desc.getBitsCompressed();
-        if(bitCompressed > bitAllocated) {
+        if (bitCompressed > bitAllocated) {
             bitCompressed = bitAllocated;
         }
         int bitCompressedForEncoder = bitCompressed;
@@ -198,11 +161,11 @@ public class DicomOutputData {
             if (signed) {
                 LOGGER.warn("Force compression to JPEG-LS lossless as lossy is not adapted to signed data.");
                 jpeglsNLE = 0;
-                bitCompressedForEncoder = 16; // Extend to bit allocated to avoid exception as negative values are treated as
-                                    // large positive values
+                bitCompressedForEncoder = 16; // Extend to bit allocated to avoid exception as negative values are
+                                              // treated as
+                // large positive values
             }
-        }
-        else {
+        } else {
             // JPEG encoder
             if (bitCompressed <= 8) {
                 bitCompressed = 8;
@@ -226,10 +189,12 @@ public class DicomOutputData {
         params[Imgcodecs.DICOM_PARAM_COLOR_MODEL] = epi; // Photometric interpretation
         params[Imgcodecs.DICOM_PARAM_JPEG_MODE] = param.getJpegMode(); // JPEG Codec mode
         params[Imgcodecs.DICOM_PARAM_JPEGLS_LOSSY_ERROR] = jpeglsNLE; // Lossy error for jpeg-ls
-        params[Imgcodecs.DICOM_PARAM_J2K_COMPRESSION_FACTOR] = param.getCompressionRatiofactor(); // JPEG2000 factor of compression ratio
+        params[Imgcodecs.DICOM_PARAM_J2K_COMPRESSION_FACTOR] = param.getCompressionRatiofactor(); // JPEG2000 factor of
+                                                                                                  // compression ratio
         params[Imgcodecs.DICOM_PARAM_JPEG_QUALITY] = param.getCompressionQuality(); // JPEG lossy quality
         params[Imgcodecs.DICOM_PARAM_JPEG_PREDICTION] = param.getPrediction(); // JPEG lossless prediction
-        params[Imgcodecs.DICOM_PARAM_JPEG_PT_TRANSFORM] = param.getPointTransform(); // JPEG lossless transformation point
+        params[Imgcodecs.DICOM_PARAM_JPEG_PT_TRANSFORM] = param.getPointTransform(); // JPEG lossless transformation
+                                                                                     // point
 
         data.setInt(Tag.Columns, VR.US, img.width());
         data.setInt(Tag.Rows, VR.US, img.height());

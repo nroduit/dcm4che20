@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Polygon;
 import java.awt.Shape;
-import java.io.File;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -21,14 +21,14 @@ class ImageRenderingTest {
 
     @Test
     void getModalatyLutImage_Statistics() throws Exception {
-        File in = new File(TranscoderTest.IN_DIR, "Mono2-CT-16.dcm");
+        Path in = Path.of(TranscoderTest.IN_DIR.toString(), "Mono2-CT-16.dcm");
         DicomImageReadParam readParam = new DicomImageReadParam();
         Polygon polygon = new Polygon();
         polygon.addPoint(150, 200);
         polygon.addPoint(200, 190);
         polygon.addPoint(200, 250);
         polygon.addPoint(140, 240);
-        double[][] val = statistics(in.getPath(), readParam, polygon);
+        double[][] val = statistics(in.toString(), readParam, polygon);
         
         assertTrue(val != null);
         assertTrue(val[0][0] == -202.0);

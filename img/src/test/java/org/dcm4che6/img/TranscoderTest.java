@@ -1,10 +1,12 @@
 package org.dcm4che6.img;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Dimension;
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
+import org.apache.log4j.BasicConfigurator;
 import org.dcm4che6.data.UID;
 import org.dcm4che6.img.Transcoder.Format;
 import org.dcm4che6.img.data.ImageHash;
@@ -30,8 +33,8 @@ import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
 public class TranscoderTest {
-    static final File IN_DIR = new File(TranscoderTest.class.getResource("").getFile());
-    static final File OUT_DIR = new File("target/test-out/");
+    static final Path IN_DIR = Path.of(TranscoderTest.class.getResource("").getFile());
+    static final Path OUT_DIR = Path.of("target/test-out/");
 
     private static DicomImageReader reader;
 
@@ -52,8 +55,9 @@ public class TranscoderTest {
 
     @BeforeAll
     protected static void setUpBeforeClass() throws Exception {
+        BasicConfigurator.configure();
         FileUtil.delete(OUT_DIR);
-        OUT_DIR.mkdirs();
+        Files.createDirectories(OUT_DIR);
         reader = (DicomImageReader) ImageIO.getImageReadersByFormatName("DICOM").next();
     }
 
@@ -66,12 +70,12 @@ public class TranscoderTest {
 
     @Test
     public void dcm2image_ApllyPresentationState() throws Exception {
-        File in = new File(IN_DIR, "imgForPrLUT.dcm");
-        File inPr = new File(IN_DIR, "prLUTs.dcm");
+        Path in = Path.of(IN_DIR.toString(), "imgForPrLUT.dcm");
+        Path inPr = Path.of(IN_DIR.toString(), "prLUTs.dcm");
         DicomImageReadParam readParam = new DicomImageReadParam();
-        readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.getPath()));
+        readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.toString()));
         ImageTranscodeParam params = new ImageTranscodeParam(readParam, Format.PNG);
-        List<File> outFiles = Transcoder.dcm2image(in.getPath(), OUT_DIR.getPath(), params);
+        List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
         assertTrue(!outFiles.isEmpty());
 
         Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
@@ -79,15 +83,15 @@ public class TranscoderTest {
         enumMap.put(ImageHash.PHASH, zeroDiff);
         enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
         enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
-        compareImageContent(new File(IN_DIR, "imgForPrLUT.png"), outFiles.get(0), enumMap);
+        compareImageContent(Path.of(IN_DIR.toString(), "imgForPrLUT.png"), outFiles.get(0), enumMap);
     }
 
     @ParameterizedTest
     @EnumSource(Format.class)
     public void dcm2image_YBR422Raw(Format format) throws Exception {
-        File in = new File(IN_DIR, "YBR_422-Raw-Subsample.dcm");
+        Path in = Path.of(IN_DIR.toString(), "YBR_422-Raw-Subsample.dcm");
         ImageTranscodeParam params = new ImageTranscodeParam(format);
-        List<File> outFiles = Transcoder.dcm2image(in.getPath(), OUT_DIR.getPath(), params);
+        List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
 
         assertTrue(!outFiles.isEmpty());
 
@@ -117,12 +121,14 @@ public class TranscoderTest {
     @Test
     public void dcm2dcm_Resize() throws Exception {
         DicomTranscodeParam params = new DicomTranscodeParam(UID.JPEGLSLossyNearLossless);
-        params.getReadParam().setSourceRenderSize(new Dimension(128,128));
-        params.getWriteJpegParam().setCompressionRatiofactor(10);
-        params.getWriteJpegParam().setNearLosslessError(3);
-        transcodeDicom("signed-9.dcm", params, null);
+        params.getReadParam().setSourceRenderSize(new Dimension(128, 128));
+        Path out = transcodeDicom("signed-9.dcm", params, null);
+        List<PlanarImage> imgs = readImages(out);
+
+        assertEquals(128, imgs.get(0).width(), "The width of image doesn't match");
+        assertEquals(128, imgs.get(0).height(), "The height of image doesn't match");
     }
-    
+
     @ParameterizedTest
     @ValueSource(strings = { UID.JPEG2000LosslessOnly, UID.JPEGLossless, UID.JPEGLSLossless })
     public void dcm2dcm_YBR422Raw_Lossless(String tsuid) throws Exception {
@@ -136,12 +142,13 @@ public class TranscoderTest {
         DicomTranscodeParam params = new DicomTranscodeParam(tsuid);
         transcodeDicom("YBR_422-Raw-Subsample.dcm", params, enumMap);
     }
-   
-    private void compareImageContent(File in, File out, Map<ImageHash, Consumer<Double>> enumMap) throws Exception {
+
+    private void compareImageContent(Path in, Path out, Map<ImageHash, Consumer<Double>> enumMap) throws Exception {
         compareImageContent(in, List.of(out), enumMap);
     }
-    
-    private void compareImageContent(File in,  List<File> outFiles, Map<ImageHash, Consumer<Double>> enumMap) throws Exception {
+
+    private void compareImageContent(Path in, List<Path> outFiles, Map<ImageHash, Consumer<Double>> enumMap)
+        throws Exception {
         List<PlanarImage> imagesIn = readImages(in);
         List<PlanarImage> imagesOut = readImages(outFiles);
 
@@ -155,8 +162,8 @@ public class TranscoderTest {
 
             System.out.println("");
             System.out.println("=== Image content diff of image " + (i + 1));
-            System.out.println("=== Input: " + in.getPath());
-            System.out.println("=== Output: " + (i >= outFiles.size() ? outFiles.get(i).getPath() : outFiles.get(0).getPath()));
+            System.out.println("=== Input: " + in);
+            System.out.println("=== Output: " + (i >= outFiles.size() ? outFiles.get(i) : outFiles.get(0)));
 
             for (Entry<ImageHash, Consumer<Double>> map : enumMap.entrySet()) {
                 double val = map.getKey().compare(imgIn.toMat(), imgOut.toMat());
@@ -165,37 +172,38 @@ public class TranscoderTest {
             }
         }
     }
-    
-    private List<PlanarImage> readImages(List<File> files) throws IOException   {
-        if (files.size() == 1 && files.get(0).getName().endsWith(".dcm")) {
+
+    private List<PlanarImage> readImages(List<Path> files) throws IOException {
+        if (files.size() == 1 && files.get(0).getFileName().toString().endsWith(".dcm")) {
             reader.setInput(new DicomFileInputStream(files.get(0)));
             return reader.getPlanarImages(null);
         } else {
-            return files.stream().map(f -> ImageProcessor.readImageWithCvException(f)).collect(Collectors.toList());
+            return files.stream().map(p -> ImageProcessor.readImageWithCvException(p.toFile()))
+                .collect(Collectors.toList());
         }
     }
-    
-    private List<PlanarImage> readImages(File file) throws IOException   {
-        if (file.getName().endsWith(".dcm")) {
-            reader.setInput(new DicomFileInputStream(file));
+
+    private List<PlanarImage> readImages(Path path) throws IOException {
+        if (path.getFileName().toString().endsWith(".dcm")) {
+            reader.setInput(new DicomFileInputStream(path));
             return reader.getPlanarImages(null);
         } else {
-            return List.of(ImageProcessor.readImageWithCvException(file));
+            return List.of(ImageProcessor.readImageWithCvException(path.toFile()));
         }
     }
 
-
-    private void transcodeDicom(String ifname, DicomTranscodeParam params, Map<ImageHash, Consumer<Double>> enumMap)
+    private Path transcodeDicom(String ifname, DicomTranscodeParam params, Map<ImageHash, Consumer<Double>> enumMap)
         throws Exception {
-        File in = new File(IN_DIR, ifname);
-        File out = new File(OUT_DIR, params.getOutputTsuid());
-        out.mkdir();
-        out = Transcoder.dcm2dcm(in.getPath(), out.getPath(), params);
+        Path in = Path.of(IN_DIR.toString(), ifname);
+        Path out = Path.of(OUT_DIR.toString(), params.getOutputTsuid());
+        Files.createDirectories(out);
+        out = Transcoder.dcm2dcm(in, out, params);
 
-        assertTrue(out != null && out.length() > 0, "The ouput image is empty");
+        assertTrue(out != null && Files.size(out) > 0, "The ouput image is empty");
         if (enumMap != null) {
             compareImageContent(in, out, enumMap);
         }
+        return out;
     }
 
 }

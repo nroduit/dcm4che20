@@ -4,8 +4,10 @@ import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -19,6 +21,7 @@ import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.spi.ImageReaderSpi;
 
+import org.dcm4che6.codec.JPEGParser;
 import org.dcm4che6.data.DataFragment;
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
@@ -30,8 +33,6 @@ import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.img.stream.ExtendSegmentedInputImageStream;
 import org.dcm4che6.img.stream.ImageDescriptor;
-import org.dcm4che6.img.stream.SOFSegment;
-import org.dcm4che6.img.stream.SegmentInputStream;
 import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.io.ByteOrder;
 import org.opencv.core.CvType;
@@ -80,9 +81,9 @@ public class DicomImageReader extends ImageReader implements Closeable {
 
     @Override
     public void setInput(Object input, boolean seekForwardOnly, boolean ignoreMetadata) {
-        super.setInput(input, seekForwardOnly, ignoreMetadata);
         resetInternalState();
         if (input instanceof DicomFileInputStream) {
+            super.setInput(input, seekForwardOnly, ignoreMetadata);
             this.dis = (DicomFileInputStream) input;
         } else if (input instanceof BytesWithImageDescriptor) {
             this.bdis = (BytesWithImageDescriptor) input;
@@ -210,18 +211,19 @@ public class DicomImageReader extends ImageReader implements Closeable {
                 break;
         }
         if (dis != null) {
-            try (SegmentInputStream stream = new SegmentInputStream(new RandomAccessFile(dis.getFile(), "r"),
-                seg.getSegmentPositions()[0], seg.getSegmentLengths()[0])) {
-                SOFSegment sof = SOFSegment.getSOFSegment(stream);
+         
+            try (SeekableByteChannel channel = Files.newByteChannel(dis.getPath(),StandardOpenOption.READ)) {
+                channel.position(seg.getSegmentPositions()[0]);
+                JPEGParser parser = new JPEGParser(channel, seg.getSegmentLengths()[0]);
                 // Preserve YBR for JPEG Lossless (1.2.840.10008.1.2.4.57, 1.2.840.10008.1.2.4.70)
-                if (sof.getMarker() == 0xffc3) {
+                if (!parser.getParams().lossyImageCompression()) {
                     return false;
                 }
                 if (pmi == PhotometricInterpretation.RGB) {
                     // Force JPEG Baseline (1.2.840.10008.1.2.4.50) to YBR_FULL_422 color model when RGB with JFIF
                     // header (error made by some constructors). RGB color model doesn't make sense for lossy jpeg with
                     // JFIF header.
-                    return sof.isJFIF() && sof.getMarker() == 0xffc0;
+                    return  !"RGB".equals(parser.getParams().colorPhotometricInterpretation());
                 }
             } catch (IOException e) {
                 LOG.error("Cannort read jpeg header", e);
@@ -231,30 +233,31 @@ public class DicomImageReader extends ImageReader implements Closeable {
     }
 
     public List<PlanarImage> getPlanarImages() throws IOException {
-        return getPlanarImages(new DicomImageReadParam());
+        return getPlanarImages(null);
     }
 
     public List<PlanarImage> getPlanarImages(DicomImageReadParam param) throws IOException {
         List<PlanarImage> list = new ArrayList<>();
-        for (int i = 0; i < dis.getMetadata().getImageDescriptor().getFrames(); i++) {
+        for (int i = 0; i < getImageDescriptor().getFrames(); i++) {
             list.add(getPlanarImage(i, param));
         }
         return list;
     }
 
     public PlanarImage getPlanarImage() throws IOException {
-        return getPlanarImage(0, new DicomImageReadParam());
+        return getPlanarImage(0, null);
     }
 
     public PlanarImage getPlanarImage(int frame, DicomImageReadParam param) throws IOException {
         PlanarImage img = getRawImage(frame, param);
         if (getImageDescriptor().getPhotometricInterpretation() == PhotometricInterpretation.PALETTE_COLOR) {
+            // TODO handle when not file
             img = DicomImageUtils.getRGBImageFromPaletteColorModel(img, dis.getMetadata().getDicomObject());
         }
-        if(param.getSourceRegion() != null) {
+        if(param != null && param.getSourceRegion() != null) {
             img = ImageProcessor.crop(img.toMat(), param.getSourceRegion());
         }
-        if(param.getSourceRenderSize() != null) {
+        if(param != null && param.getSourceRenderSize() != null) {
             img = ImageProcessor.scale(img.toMat(), param.getSourceRenderSize(), Imgproc.INTER_LANCZOS4);
         }
 
@@ -262,12 +265,12 @@ public class DicomImageReader extends ImageReader implements Closeable {
          * Handle overlay in pixel data: extract the overlay, serialize it in a file and set all values to O in the
          * pixel data.
          */
-        return dis.getImageWithoutEmbeddedOverlay(img);
+        return dis == null ? img : dis.getImageWithoutEmbeddedOverlay(img);
     }
 
     public PlanarImage getRawImage(int frame, DicomImageReadParam param) throws IOException {
         if (dis == null) {
-            return getRawImageFromBytes(param);
+            return getRawImageFromBytes(frame, param);
         } else {
             return getRawImageFromFile(frame, param);
         }
@@ -334,10 +337,10 @@ public class DicomImageReader extends ImageReader implements Closeable {
                 MatOfInt dicomparams = new MatOfInt(Imgcodecs.IMREAD_UNCHANGED, dcmFlags, desc.getColumns(),
                     desc.getRows(), Imgcodecs.DICOM_CP_UNKNOWN, desc.getSamples(), bits,
                     desc.isBanded() ? Imgcodecs.ILV_NONE : Imgcodecs.ILV_SAMPLE);
-                return ImageCV.toImageCV(Imgcodecs.dicomRawFileRead(seg.getFile().getAbsolutePath(), positions, lengths,
+                return ImageCV.toImageCV(Imgcodecs.dicomRawFileRead(seg.getPath().toString(), positions, lengths,
                     dicomparams, desc.getPhotometricInterpretation().name()));
             }
-            return ImageCV.toImageCV(Imgcodecs.dicomJpgFileRead(seg.getFile().getAbsolutePath(), positions, lengths,
+            return ImageCV.toImageCV(Imgcodecs.dicomJpgFileRead(seg.getPath().toString(), positions, lengths,
                 dcmFlags, Imgcodecs.IMREAD_UNCHANGED));
         } finally {
             closeMat(positions);
@@ -345,7 +348,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         }
     }
 
-    protected PlanarImage getRawImageFromBytes(DicomImageReadParam param) throws IOException {
+    protected PlanarImage getRawImageFromBytes(int frame, DicomImageReadParam param) throws IOException {
         if (bdis == null) {
             throw new IOException("No BytesWithImageDescriptor found");
         }
@@ -362,7 +365,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         if (!rawData && !TransferSyntaxType.isJpeg2000(tsuid) && bdis.forceYbrToRgbConversion()) {
             dcmFlags |= Imgcodecs.DICOM_FLAG_YBR;
         }
-        boolean bigendian = dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;
+        boolean bigendian = dis == null ?  false : dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;
         if (bigendian) {
             dcmFlags |= Imgcodecs.DICOM_FLAG_BIGENDIAN;
         }
@@ -375,7 +378,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
 
         Mat buf = null;
         try {
-            ByteBuffer b = bdis.getBytes();
+            ByteBuffer b = bdis.getBytes(frame);
             buf = new Mat(1, b.limit(), CvType.CV_8UC1);
             buf.put(0, 0, b.array());
             if (rawData) {
@@ -436,16 +439,15 @@ public class DicomImageReader extends ImageReader implements Closeable {
                 } else {
                     // Multi-frames where each frames can have multiple fragments.
                     if (fragmentsPositions.isEmpty()) {
-                        String tsuid =
-                            dis.getMetadata().getTransferSyntaxUID().orElse(dis.getEncoding().transferSyntaxUID);
-                        boolean jpeg2000 = tsuid.startsWith("1.2.840.10008.1.2.4.9");
-                        try (RandomAccessFile srcStream = new RandomAccessFile(dis.getFile(), "r")) {
+                        try (SeekableByteChannel channel = Files.newByteChannel(dis.getPath(),StandardOpenOption.READ)) {
                             for (int i = 1; i < nbFragments; i++) {
                                 DataFragment bulkData = fragments.get(i);
-                                SegmentInputStream stream =
-                                    new SegmentInputStream(srcStream, bulkData.valuePosition(), bulkData.valueLength());
-                                if (jpeg2000 ? decodeJpeg2000(stream) : decodeJpeg(stream)) {
+                                channel.position(bulkData.valuePosition());
+                                try {
+                                    new JPEGParser(channel, bulkData.valueLength());
                                     fragmentsPositions.add(i);
+                                } catch (Exception e) {
+                                    // Not jpeg stream
                                 }
                             }
                         }
@@ -469,102 +471,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
                 }
             }
         }
-        return new ExtendSegmentedInputImageStream(dis.getFile(), offsets, length, desc);
+        return new ExtendSegmentedInputImageStream(dis.getPath(), offsets, length, desc);
     }
-
-    private static boolean decodeJpeg2000(SegmentInputStream iis) throws IOException {
-        iis.mark();
-        try {
-            int marker = (iis.read() << 8) | iis.read();
-
-            if (marker == 0xFF4F) {
-                return true;
-            }
-
-            iis.reset();
-            iis.mark();
-            byte[] b = new byte[12];
-            iis.read(b, 0, b.length);
-
-            // Verify the signature box
-            // The length of the signature box is 12
-            if (b[0] != 0 || b[1] != 0 || b[2] != 0 || b[3] != 12) {
-                return false;
-            }
-
-            // The signature box type is "jP "
-            if ((b[4] & 0xff) != 0x6A || (b[5] & 0xFF) != 0x50 || (b[6] & 0xFF) != 0x20 || (b[7] & 0xFF) != 0x20) {
-                return false;
-            }
-
-            // The signature content is 0x0D0A870A
-            return (b[8] & 0xFF) == 0x0D && (b[9] & 0xFF) == 0x0A && (b[10] & 0xFF) == 0x87 && (b[11] & 0xFF) == 0x0A;
-        } finally {
-            iis.reset();
-        }
-    }
-
-    private static boolean decodeJpeg(SegmentInputStream iis) throws IOException {
-        // jpeg and jpeg-ls
-        iis.mark();
-        try {
-            int byte1 = iis.read();
-            int byte2 = iis.read();
-            // Magic numbers for JPEG (general jpeg marker)
-            if ((byte1 != 0xFF) || (byte2 != 0xD8)) {
-                return false;
-            }
-            do {
-                byte1 = iis.read();
-                byte2 = iis.read();
-                // Something wrong, but try to read it anyway
-                if (byte1 != 0xFF) {
-                    break;
-                }
-                // Start of scan
-                if (byte2 == 0xDA) {
-                    break;
-                }
-                // Start of Frame, also known as SOF55, indicates a JPEG-LS file.
-                if (byte2 == 0xF7) {
-                    return true;
-                }
-                // 0xffc0: // SOF_0: JPEG baseline
-                // 0xffc1: // SOF_1: JPEG extended sequential DCT
-                // 0xffc2: // SOF_2: JPEG progressive DCT
-                // 0xffc3: // SOF_3: JPEG lossless sequential
-                if ((byte2 >= 0xC0) && (byte2 <= 0xC3)) {
-                    return true;
-                }
-                // 0xffc5: // SOF_5: differential (hierarchical) extended sequential, Huffman
-                // 0xffc6: // SOF_6: differential (hierarchical) progressive, Huffman
-                // 0xffc7: // SOF_7: differential (hierarchical) lossless, Huffman
-                if ((byte2 >= 0xC5) && (byte2 <= 0xC7)) {
-                    return true;
-                }
-                // 0xffc9: // SOF_9: extended sequential, arithmetic
-                // 0xffca: // SOF_10: progressive, arithmetic
-                // 0xffcb: // SOF_11: lossless, arithmetic
-                if ((byte2 >= 0xC9) && (byte2 <= 0xCB)) {
-                    return true;
-                }
-                // 0xffcd: // SOF_13: differential (hierarchical) extended sequential, arithmetic
-                // 0xffce: // SOF_14: differential (hierarchical) progressive, arithmetic
-                // 0xffcf: // SOF_15: differential (hierarchical) lossless, arithmetic
-                if ((byte2 >= 0xCD) && (byte2 <= 0xCF)) {
-                    return true;
-                }
-                int length = iis.read() << 8;
-                length += iis.read();
-                length -= 2;
-                while (length > 0) {
-                    length -= iis.skip(length);
-                }
-            } while (true);
-            return true;
-        } finally {
-            iis.reset();
-        }
-    }
-
+    
 }

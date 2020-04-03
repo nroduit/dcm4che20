@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * @since Mar 2018
  */
 public interface BytesWithImageDescriptor extends ImageReaderDescriptor {
-    ByteBuffer getBytes() throws IOException;
+    ByteBuffer getBytes(int frame) throws IOException;
 
     String getTransferSyntax();
 
