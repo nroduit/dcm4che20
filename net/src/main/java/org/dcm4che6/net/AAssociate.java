@@ -381,13 +381,13 @@ public abstract class AAssociate {
             pcs.forEach(action);
         }
 
-        Stream<Byte> pcidsFor(String abstractSyntax) {
+        public Stream<Byte> pcidsFor(String abstractSyntax) {
             return pcs.entrySet().stream()
                     .filter(e -> e.getValue().equalsAbstractSyntax(abstractSyntax))
                     .map(Map.Entry::getKey);
         }
 
-        Stream<Byte> pcidsFor(String abstractSyntax, String transferSyntax) {
+        public Stream<Byte> pcidsFor(String abstractSyntax, String transferSyntax) {
             return pcs.entrySet().stream()
                     .filter(e -> e.getValue().matches(abstractSyntax, transferSyntax))
                     .map(Map.Entry::getKey);
