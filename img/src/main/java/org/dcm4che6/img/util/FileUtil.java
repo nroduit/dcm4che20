@@ -1,9 +1,12 @@
 package org.dcm4che6.img.util;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.stream.Stream;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
@@ -18,6 +21,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class FileUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileUtil.class);
+    
+    public static final int FILE_BUFFER = 4096;
 
     private FileUtil() {
     }
@@ -52,6 +57,26 @@ public final class FileUtil {
         }
     }
 
+    public static boolean writeStream(InputStream inputStream, Path outFile, boolean closeInputStream) {
+        try (OutputStream outputStream = Files.newOutputStream(outFile)) {
+            byte[] buf = new byte[FILE_BUFFER];
+            int offset;
+            while ((offset = inputStream.read(buf)) > 0) {
+                outputStream.write(buf, 0, offset);
+            }
+            outputStream.flush();
+            return true;
+        } catch (IOException e) {
+            FileUtil.delete(outFile);
+            LOGGER.error("Writing file: {}", outFile, e); //$NON-NLS-1$
+            return false;
+        } finally {
+            if (closeInputStream) {
+                FileUtil.safeClose(inputStream);
+            }
+        }
+    }
+
     private static boolean deleteFile(Path path) {
         try {
             return Files.deleteIfExists(path);
@@ -60,15 +85,14 @@ public final class FileUtil {
         }
         return false;
     }
-    
+
     public static boolean delete(Path fileOrDirectory) {
-        if(!Files.isDirectory(fileOrDirectory)){
+        if (!Files.isDirectory(fileOrDirectory)) {
             return deleteFile(fileOrDirectory);
         }
-        
-        try {
-            Files.walk(fileOrDirectory)
-              .sorted(Comparator.reverseOrder()).forEach(FileUtil::deleteFile);
+
+        try (Stream<Path> walk = Files.walk(fileOrDirectory)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(FileUtil::deleteFile);
             return true;
         } catch (IOException e) {
             LOGGER.error("Cannot delete", e);

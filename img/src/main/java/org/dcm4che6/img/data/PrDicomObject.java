@@ -44,6 +44,10 @@ public class PrDicomObject {
         return seqDcm == null ? Optional.empty() : Optional.of(new VoiLutModule(seqDcm));
     }
 
+    /**
+     * @see <a href="http://dicom.nema.org/medical/Dicom/current/output/chtml/part03/sect_C.11.6.html">C.11.6 Softcopy
+     *      Presentation LUT Module</a>
+     */
     private void initPrLut() {
         Optional<DicomElement> prseq = dcmPR.get(Tag.PresentationLUTSequence);
         if (prseq.isPresent()) {

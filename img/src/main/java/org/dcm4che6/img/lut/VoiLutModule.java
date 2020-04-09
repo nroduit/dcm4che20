@@ -74,6 +74,9 @@ public class VoiLutModule {
         }
 
         if (LOGGER.isDebugEnabled()) {
+            // If multiple Window center and window width values are present, both Attributes shall have the same
+            // number of values and shall be considered as pairs. Multiple values indicate that multiple alternative
+            // views may be presented
             if (windowCenter.isEmpty() && !windowWidth.isEmpty()) {
                 LOGGER.debug("VOI Window Center is required if Window Width is present");
             } else if (!windowCenter.isEmpty() && windowWidth.isEmpty()) {
@@ -93,7 +96,7 @@ public class VoiLutModule {
              * IHE BIR: Windowing and Rendering 4.16.4.2.2.5.4
              *
              * If Rescale Slope and Rescale Intercept has been removed in ModalityLutModule then the Window Center and
-             * Window Width must be adapted.
+             * Window Width must be adapted. See https://groups.google.com/forum/#!topic/comp.protocols.dicom/iTCxWcsqjnM
              */
             int length = windowCenter.size();
             if (length != windowWidth.size()) {
