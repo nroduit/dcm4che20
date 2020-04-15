@@ -9,8 +9,6 @@ import java.util.OptionalDouble;
 import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.data.PhotometricInterpretation;
 import org.dcm4che6.img.data.PrDicomObject;
-import org.dcm4che6.img.lut.LutParameters;
-import org.dcm4che6.img.lut.LutShape;
 import org.dcm4che6.img.lut.PresetWindowLevel;
 import org.dcm4che6.img.lut.WindLevelParameters;
 import org.dcm4che6.img.stream.ImageDescriptor;
@@ -23,6 +21,8 @@ import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
 import org.weasis.opencv.op.ImageProcessor;
+import org.weasis.opencv.op.lut.LutParameters;
+import org.weasis.opencv.op.lut.LutShape;
 
 /**
  * @author Nicolas Roduit
@@ -45,7 +45,6 @@ public class DicomImageAdapter {
         this.desc = Objects.requireNonNull(desc);
         this.bitsStored = desc.getBitsStored();
         findMinMaxValues(true);
-
     }
 
     public int getBitsStored() {

@@ -10,8 +10,8 @@ import javax.imageio.ImageReadParam;
 import javax.imageio.ImageTypeSpecifier;
 
 import org.dcm4che6.img.data.PrDicomObject;
-import org.dcm4che6.img.lut.LutShape;
 import org.dcm4che6.img.util.LangUtil;
+import org.weasis.opencv.op.lut.LutShape;
 
 /**
  * @author Nicolas Roduit

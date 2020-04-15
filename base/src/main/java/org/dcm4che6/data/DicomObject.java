@@ -123,10 +123,6 @@ public interface DicomObject extends Iterable<DicomElement> {
     Optional<double[]> getDoubles(int tag);
 
     Optional<double[]> getDoubles(String privateCreator, int tag);
-    
-    Optional<byte[]> getBytes(int tag);
-
-    Optional<byte[]> getBytes(String privateCreator, int tag);
 
     DicomElement add(DicomElement el);
 

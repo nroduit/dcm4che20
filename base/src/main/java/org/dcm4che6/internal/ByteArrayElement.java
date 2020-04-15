@@ -67,11 +67,6 @@ class ByteArrayElement extends DicomElementImpl {
     public String[] stringValues() {
         return vr.type.stringValues(value);
     }
-    
-    @Override
-    public byte[] byteValues() {
-        return value;
-    }
 
     @Override
     public void writeValueTo(DicomOutputStream dos) throws IOException {

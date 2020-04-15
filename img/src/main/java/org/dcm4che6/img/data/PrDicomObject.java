@@ -57,7 +57,7 @@ public class PrDicomObject {
              * LUT).
              */
             DicomObject dcmLut = prseq.get().getItem(0);
-            if (dcmLut != null && dcmLut.getBytes(Tag.LUTData).isPresent()) {
+            if (dcmLut != null && dcmLut.get(Tag.LUTData).isPresent()) {
                 prLut = DicomImageUtils.createLut(dcmLut);
                 prLutExplanation = dcmPR.getString(Tag.LUTExplanation);
             }

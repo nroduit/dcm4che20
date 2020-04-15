@@ -62,7 +62,7 @@ public class ModalityLutModule {
         if (modSeq.isPresent()) {
             DicomObject dcmLut = modSeq.get().getItem(0);
             if (dcmLut != null && dcmLut.get(Tag.ModalityLUTType).isPresent()
-                && dcmLut.getInts(Tag.LUTDescriptor).isPresent() && dcmLut.getBytes(Tag.LUTData).isPresent()) {
+                && dcmLut.getInts(Tag.LUTDescriptor).isPresent() && dcmLut.get(Tag.LUTData).isPresent()) {
                 boolean canApplyMLUT = true;
 
                 // See http://dicom.nema.org/medical/dicom/current/output/html/part04.html#figure_N.2-1 and

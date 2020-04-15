@@ -10,7 +10,7 @@
 	<artifactId>dcm4che-img</artifactId>
 	<packaging>bundle</packaging>
 	<properties>
-		<weasis.version>3.6.0-rc1</weasis.version>
+		<weasis.core.img.version>4.2.0-SNAPSHOT</weasis.core.img.version>
 		<weasis.opencv.native.version>4.2.0-dcm</weasis.opencv.native.version>
 		<!-- Skip test by default except for some architecture related to the native library -->
 		<skipImgTests>false</skipImgTests>
@@ -229,9 +229,9 @@
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.weasis.opencv</groupId>
-			<artifactId>weasis-opencv-core</artifactId>
-			<version>3.6.0-SNAPSHOT</version>
+			<groupId>org.weasis.core</groupId>
+			<artifactId>weasis-core-img</artifactId>
+			<version>${weasis.core.img.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>

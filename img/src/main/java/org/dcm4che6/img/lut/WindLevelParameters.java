@@ -5,6 +5,7 @@ import java.util.Objects;
 import org.dcm4che6.img.DicomImageAdapter;
 import org.dcm4che6.img.DicomImageReadParam;
 import org.dcm4che6.img.data.PrDicomObject;
+import org.weasis.opencv.op.lut.LutShape;
 
 /**
  * @author Nicolas Roduit

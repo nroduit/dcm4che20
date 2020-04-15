@@ -20,13 +20,14 @@ import javax.xml.stream.XMLStreamReader;
 
 import org.dcm4che6.img.DicomImageAdapter;
 import org.dcm4che6.img.data.PrDicomObject;
-import org.dcm4che6.img.lut.LutShape.eFunction;
 import org.dcm4che6.img.stream.ImageDescriptor;
 import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.img.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.opencv.data.LookupTableCV;
+import org.weasis.opencv.op.lut.LutShape;
+import org.weasis.opencv.op.lut.LutShape.eFunction;
 
 /**
  * @author Nicolas Roduit

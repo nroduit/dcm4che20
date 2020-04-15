@@ -308,7 +308,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
             return null;
         }
 
-        String tsuid = dis.getMetadata().getTransferSyntaxUID().orElse(dis.getEncoding().transferSyntaxUID);
+        String tsuid = dis.getMetadata().getTransferSyntaxUID();
         TransferSyntaxType type = TransferSyntaxType.forUID(tsuid);
         boolean rawData = fragments.isEmpty() || type == TransferSyntaxType.NATIVE || type == TransferSyntaxType.RLE;
         int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_FLAG_SIGNED

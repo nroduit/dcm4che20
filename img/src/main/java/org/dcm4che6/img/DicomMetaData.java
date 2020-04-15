@@ -2,7 +2,6 @@ package org.dcm4che6.img;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.Optional;
 
 import javax.imageio.metadata.IIOMetadata;
 
@@ -21,11 +20,21 @@ public class DicomMetaData extends IIOMetadata {
     private final DicomObject fileMetaInformation;
     private final DicomObject dcm;
     private final ImageDescriptor desc;
+    private final String transferSyntaxUID;
 
     public DicomMetaData(DicomInputStream dcmStream) throws IOException {
         this.fileMetaInformation = Objects.requireNonNull(dcmStream).readFileMetaInformation();
         this.dcm = dcmStream.readDataSet();
         this.desc = new ImageDescriptor(dcm);
+        this.transferSyntaxUID =
+            fileMetaInformation.getString(Tag.TransferSyntaxUID).orElse(dcmStream.getEncoding().transferSyntaxUID);
+    }
+
+    public DicomMetaData(DicomObject dcm, String transferSyntaxUID) {
+        this.fileMetaInformation = null;
+        this.dcm = Objects.requireNonNull(dcm);
+        this.desc = new ImageDescriptor(dcm);
+        this.transferSyntaxUID = Objects.requireNonNull(transferSyntaxUID);
     }
 
     public final DicomObject getFileMetaInformation() {
@@ -35,7 +44,7 @@ public class DicomMetaData extends IIOMetadata {
     public final DicomObject getDicomObject() {
         return dcm;
     }
-    
+
     public final ImageDescriptor getImageDescriptor() {
         return desc;
     }
@@ -59,8 +68,8 @@ public class DicomMetaData extends IIOMetadata {
     public void reset() {
         throw new UnsupportedOperationException();
     }
-    
-    public Optional<String> getTransferSyntaxUID() {
-    	return getFileMetaInformation().getString(Tag.TransferSyntaxUID);
+
+    public String getTransferSyntaxUID() {
+        return transferSyntaxUID;
     }
 }

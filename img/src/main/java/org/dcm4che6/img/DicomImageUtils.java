@@ -1,15 +1,18 @@
 package org.dcm4che6.img;
 
 import java.awt.image.DataBuffer;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
+import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
-import org.dcm4che6.img.lut.LutParameters;
-import org.dcm4che6.img.lut.LutShape;
+import org.dcm4che6.io.DicomEncoding;
+import org.dcm4che6.io.DicomOutputStream;
 import org.dcm4che6.util.TagUtils;
 import org.opencv.core.CvType;
 import org.opencv.imgproc.Imgproc;
@@ -19,6 +22,8 @@ import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
+import org.weasis.opencv.op.lut.LutParameters;
+import org.weasis.opencv.op.lut.LutShape;
 
 /**
  *
@@ -72,7 +77,7 @@ public class DicomImageUtils {
                 // Replace the original image with the RGB image.
                 return ImageProcessor.applyLUT(source.toMat(), new byte[][] { b, g, r });
             } else {
-                LookupTableCV lookup = new LookupTableCV( new byte[][] { b, g, r });
+                LookupTableCV lookup = new LookupTableCV(new byte[][] { b, g, r });
                 return lookup.lookup(source.toMat());
             }
         }
@@ -98,13 +103,13 @@ public class DicomImageUtils {
 
         // Three values of the LUT Descriptor describe the format of the LUT Data in the corresponding Data Element
         int[] descriptor = dicomLutObject.getInts(Tag.LUTDescriptor).orElse(null);
+        Optional<DicomElement> oLutdata = dicomLutObject.get(Tag.LUTData);
 
         if (descriptor == null) {
             LOGGER.debug("Missing LUT Descriptor");
         } else if (descriptor.length != 3) {
             LOGGER.debug("Illegal number of LUT Descriptor values \"{}\"", descriptor.length);
-        } else {
-
+        } else if (oLutdata.isPresent()) {
             // First value is the number of entries in the lookup table.
             // When this value is 0 the number of table entries is equal to 65536 <=> 0x10000.
             int numEntries = (descriptor[0] == 0) ? 65536 : descriptor[0];
@@ -118,21 +123,21 @@ public class DicomImageUtils {
             int dataLength = 0; // number of entry values in the LUT Data.
 
             // LUT Data contains the LUT entry values, assuming data is always unsigned data
-            Optional<byte[]> bDataOpt = dicomLutObject.getBytes(Tag.LUTData);
-            if (bDataOpt.isEmpty()) {
+            Optional<byte[]> obd = getByteData(oLutdata.get());
+
+            if (obd.isEmpty()) {
                 LOGGER.error("Cannot get byte[] of {}", TagUtils.toString(Tag.LUTData));
                 return Optional.empty();
             }
-            byte[] bData = bDataOpt.get();
+            byte[] bData = obd.get();
 
             if (numBits <= 8) { // LUT Data should be stored in 8 bits allocated format
                 if (numEntries <= 256 && (bData.length == (numEntries << 1))) {
                     // Some implementations have encoded 8 bit entries with 16 bits allocated, padding the high bits
 
                     byte[] bDataNew = new byte[numEntries];
-                    int byteShift = (false ? 1 : 0); // FIXME is always little endian?
                     for (int i = 0; i < bDataNew.length; i++) {
-                        bDataNew[i] = bData[(i << 1) | byteShift];
+                        bDataNew[i] = bData[(i << 1)];
                     }
 
                     dataLength = bDataNew.length;
@@ -145,7 +150,7 @@ public class DicomImageUtils {
             } else if (numBits <= 16) { // LUT Data should be stored in 16 bits allocated format
                 // LUT Data contains the LUT entry values, assuming data is always unsigned data
                 short[] sData = new short[numEntries];
-                bytesToShorts(bData, sData, 0, sData.length, false); // FIXME is always little endian?
+                bytesToShorts(bData, sData, 0, sData.length);
 
                 if (numEntries <= 256) {
                     // Some implementations have encoded 8 bit entries with 16 bits allocated, padding the high bits
@@ -183,28 +188,11 @@ public class DicomImageUtils {
         return Optional.ofNullable(lookupTable);
     }
 
-    public static void bytesToShorts(byte[] b, short[] s, int off, int len, boolean bigEndian) {
-        if (bigEndian)
-            bytesToShortsBE(b, s, off, len);
-        else
-            bytesToShortsLE(b, s, off, len);
-    }
-
-    public static void bytesToShortsLE(byte[] b, short[] s, int off, int len) {
+    public static void bytesToShorts(byte[] b, short[] s, int off, int len) {
         int boff = 0;
         for (int j = 0; j < len; j++) {
             int b0 = b[boff + 1];
             int b1 = b[boff] & 0xff;
-            s[off + j] = (short) ((b0 << 8) | b1);
-            boff += 2;
-        }
-    }
-
-    public static void bytesToShortsBE(byte[] b, short[] s, int off, int len) {
-        int boff = 0;
-        for (int j = 0; j < len; j++) {
-            int b0 = b[boff];
-            int b1 = b[boff + 1] & 0xff;
             s[off + j] = (short) ((b0 << 8) | b1);
             boff += 2;
         }
@@ -711,6 +699,37 @@ public class DicomImageUtils {
         return pixelValue;
     }
 
+    public static Optional<byte[]> getByteData(DicomObject dicom, int tag) {
+        return getByteData(dicom, null, tag);
+    }
+
+    public static Optional<byte[]> getByteData(DicomObject dicom, String privateCreator, int tag) {
+        if (dicom == null) {
+            return Optional.empty();
+        }
+        Optional<DicomElement> oVal = dicom.get(privateCreator, tag);
+        if(oVal.isEmpty()) {
+            return Optional.empty();
+        }
+        return getByteData(oVal.get());
+    }
+    
+    public static Optional<byte[]> getByteData(DicomElement el) {
+        if(el == null) {
+            return Optional.empty();
+        }
+        byte[] bData = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        DicomOutputStream dos = new DicomOutputStream(out).withEncoding(DicomEncoding.EVR_LE)) {
+            el.writeValueTo(dos);
+            bData = out.toByteArray();
+        } catch (IOException e) {
+            LOGGER.error("Getting byte data from {}", TagUtils.toString(el.tag()), e);
+        }
+        return Optional.ofNullable(bData);
+    }
+
+
     // ////////////////////////////////////////////////////////////////////////////
     // Take from dcm4che3, should be public
 
@@ -736,8 +755,9 @@ public class DicomImageUtils {
     public static byte[] lutData(DicomObject ds, int[] desc, int dataTag, int segmTag) {
         int len = desc[0] == 0 ? 0x10000 : desc[0];
         int bits = desc[2];
-        byte[] data = ds.getBytes(dataTag).orElse(null);
-        if (data == null) {
+        Optional<byte[]> odata = getByteData(ds, dataTag);
+        byte[] data = null;
+        if (odata.isEmpty()) {
             Optional<int[]> lut = ds.getInts(segmTag);
             if (lut.isEmpty()) {
                 throw new IllegalArgumentException("Missing LUT Data!");
@@ -748,17 +768,14 @@ public class DicomImageUtils {
             }
             data = new byte[len];
             inflateSegmentedLut(segm, data);
-        } else if (bits == 16 || data.length != len) {
+        } else if (bits == 16 || odata.get().length != len) {
+            data = odata.get();
             if (data.length != len << 1) {
                 lutLengthMismatch(data.length, len);
             }
-            int hilo = false ? 0 : 1; // FXIME always little endian?
-            if (bits == 8) {
-                hilo = 1 - hilo; // padded high bits -> use low bits
-            }
             byte[] bs = new byte[data.length >> 1];
             for (int i = 0; i < bs.length; i++) {
-                bs[i] = data[(i << 1) | hilo];
+                bs[i] = data[(i << 1)];
             }
             data = bs;
         }

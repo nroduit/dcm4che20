@@ -14,6 +14,7 @@ import java.util.Optional;
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
+import org.dcm4che6.img.DicomImageUtils;
 import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.util.TagUtils;
 import org.opencv.core.Mat;
@@ -202,7 +203,7 @@ public class Overlays {
                     + TagUtils.toString(tagOverlayOrigin)
                     + " Overlay Origin"));
         if (ovlyData == null) {
-            Optional<byte[]> overData = dcm.getBytes(tagOverlayData);
+            Optional<byte[]> overData = DicomImageUtils.getByteData(dcm, tagOverlayData);
             if(overData.isPresent())
                 ovlyData = overData.get();
         }
