@@ -16,6 +16,24 @@
 		<skipImgTests>false</skipImgTests>
 	</properties>
 
+	<repositories>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>central</id>
+			<name>Central Repository</name>
+			<url>https://repo.maven.apache.org/maven2</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>mvn-repo-master</id>
+			<url>https://raw.github.com/nroduit/mvn-repo/master/</url>
+		</repository>
+	</repositories>
+	
 	<profiles>
 		<profile>
 			<id>mac</id>
