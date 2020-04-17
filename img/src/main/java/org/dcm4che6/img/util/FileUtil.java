@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class FileUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileUtil.class);
-    
+
     public static final int FILE_BUFFER = 4096;
 
     private FileUtil() {
@@ -146,5 +146,14 @@ public final class FileUtil {
         } else {
             return dst;
         }
+    }
+
+    public static Path addFileIndex(Path path, int index, int indexSize) {
+        if (indexSize < 1) {
+            return path;
+        }
+        String pattern = "$1-%0" + indexSize + "d$2";
+        String insert = String.format(pattern, index);
+        return path.resolveSibling(path.getFileName().toString().replaceFirst("(.*?)(\\.[^.]+)?$", insert));
     }
 }

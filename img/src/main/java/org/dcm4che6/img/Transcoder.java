@@ -72,6 +72,8 @@ public class Transcoder {
                 ? new MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, getCompressionRatio(params)) : null;
             reader.setInput(new DicomFileInputStream(srcPath));
             int nbFrames = reader.getImageDescriptor().getFrames();
+            int indexSize = (int) Math.log10(nbFrames);
+            indexSize = nbFrames > 1 ? indexSize + 1 : 0;
             for (int i = 0; i < nbFrames; i++) {
                 PlanarImage img = reader.getPlanarImage(i, params.getReadParam());
                 boolean rawImg = isPreserveRawImage(params, format, img.type());
@@ -81,8 +83,7 @@ public class Transcoder {
                     img =
                         ImageRendering.getDefaultRenderedImage(img, reader.getImageDescriptor(), params.getReadParam());
                 }
-                Integer index = nbFrames > 1 ? i + 1 : null;
-                Path outPath = writeImage(img, FileUtil.getOutputPath(srcPath, dstPath), format, map, index);
+                Path outPath = writeImage(img, FileUtil.getOutputPath(srcPath, dstPath), format, map, i + 1, indexSize);
                 outFiles.add(outPath);
             }
         }
@@ -195,9 +196,9 @@ public class Transcoder {
         return path.resolveSibling(path.getFileName().toString().replaceFirst("(.*?)(\\.[^.]+)?$", insert));
     }
 
-    private static Path writeImage(PlanarImage img, Path path, Format ext, MatOfInt map, Integer index) {
+    private static Path writeImage(PlanarImage img, Path path, Format ext, MatOfInt map, int index, int indexSize) {
         Path outPath = adaptFileExtension(path, ".dcm", ext.extension);
-        outPath = adaptFileIndex(outPath, index);
+        outPath = FileUtil.addFileIndex(outPath, index, indexSize);
         if (map == null) {
             if (!ImageProcessor.writeImage(img.toMat(), outPath.toFile())) {
                 LOGGER.error("Cannot Transform to {} {}", ext, img);
