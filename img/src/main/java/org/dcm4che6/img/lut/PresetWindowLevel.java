@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.op.lut.LutShape;
 import org.weasis.opencv.op.lut.LutShape.eFunction;
+import org.weasis.opencv.op.lut.PresentationStateLut;
+import org.weasis.opencv.op.lut.WlPresentation;
 
 /**
  * @author Nicolas Roduit
@@ -82,13 +84,13 @@ public class PresetWindowLevel {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         PresetWindowLevel that = (PresetWindowLevel) o;
-        return name.equals(that.name) &&
-                window.equals(that.window) &&
-                level.equals(that.level) &&
-                shape.equals(that.shape);
+        return name.equals(that.name) && window.equals(that.window) && level.equals(that.level)
+            && shape.equals(that.shape);
     }
 
     @Override
@@ -96,8 +98,8 @@ public class PresetWindowLevel {
         return Objects.hash(name, window, level, shape);
     }
 
-    public static List<PresetWindowLevel> getPresetCollection(DicomImageAdapter adapter, boolean pixelPadding,
-        String type, PrDicomObject pr) {
+    public static List<PresetWindowLevel> getPresetCollection(DicomImageAdapter adapter, String type,
+        WlPresentation wl) {
         if (adapter == null) {
             return null;
         }
@@ -137,8 +139,8 @@ public class PresetWindowLevel {
                     }
                 }
 
-                PresetWindowLevel preset =
-                    new PresetWindowLevel(explanation + dicomKeyWord, windowList.get(i), levelList.get(i), defaultLutShape);
+                PresetWindowLevel preset = new PresetWindowLevel(explanation + dicomKeyWord, windowList.get(i),
+                    levelList.get(i), defaultLutShape);
                 if (!presetList.contains(preset)) {
                     presetList.add(preset);
                     k++;
@@ -146,8 +148,8 @@ public class PresetWindowLevel {
             }
         }
 
-        List<LookupTableCV> voiLUTsData = getVoiLutData(desc, pr);
-        List<String> voiLUTsExplanation = getVoiLUTExplanation(desc, pr);
+        List<LookupTableCV> voiLUTsData = getVoiLutData(desc, wl);
+        List<String> voiLUTsExplanation = getVoiLUTExplanation(desc, wl);
 
         if (!voiLUTsData.isEmpty()) {
             String defaultExplanation = "VOI LUT";
@@ -163,7 +165,7 @@ public class PresetWindowLevel {
                 }
 
                 PresetWindowLevel preset =
-                    buildPresetFromLutData(adapter, voiLUTsData.get(i), pixelPadding, explanation + dicomKeyWord);
+                    buildPresetFromLutData(adapter, voiLUTsData.get(i), wl, explanation + dicomKeyWord);
                 if (preset == null) {
                     continue;
                 }
@@ -171,9 +173,8 @@ public class PresetWindowLevel {
             }
         }
 
-        PresetWindowLevel autoLevel =
-            new PresetWindowLevel("Auto Level [Image]", adapter.getFullDynamicWidth(pixelPadding, null),
-                adapter.getFullDynamicCenter(pixelPadding, null), defaultLutShape);
+        PresetWindowLevel autoLevel = new PresetWindowLevel("Auto Level [Image]", adapter.getFullDynamicWidth(wl),
+            adapter.getFullDynamicCenter(wl), defaultLutShape);
         presetList.add(autoLevel);
 
         // Exclude Secondary Capture CT and when PR preset
@@ -187,10 +188,14 @@ public class PresetWindowLevel {
         return presetList;
     }
 
-    private static List<LookupTableCV> getVoiLutData(ImageDescriptor desc, PrDicomObject pr) {
+    private static List<LookupTableCV> getVoiLutData(ImageDescriptor desc, WlPresentation wl) {
         List<LookupTableCV> luts = new ArrayList<>();
-        if (pr != null && pr.getVoiLUT().isPresent()) {
-            luts.addAll(pr.getVoiLUT().get().getLut());
+        PresentationStateLut pr = wl.getPresentationState();
+        if (pr instanceof PrDicomObject) {
+            Optional<VoiLutModule> vlut = ((PrDicomObject) pr).getVoiLUT();
+            if (vlut.isPresent()) {
+                luts.addAll(vlut.get().getLut());
+            }
         }
         if (!desc.getVoiLUT().getLut().isEmpty()) {
             luts.addAll(desc.getVoiLUT().getLut());
@@ -198,10 +203,14 @@ public class PresetWindowLevel {
         return luts;
     }
 
-    private static List<String> getVoiLUTExplanation(ImageDescriptor desc, PrDicomObject pr) {
+    private static List<String> getVoiLUTExplanation(ImageDescriptor desc, WlPresentation wl) {
         List<String> luts = new ArrayList<>();
-        if (pr != null && pr.getVoiLUT().isPresent()) {
-            luts.addAll(pr.getVoiLUT().get().getLutExplanation());
+        PresentationStateLut pr = wl.getPresentationState();
+        if (pr instanceof PrDicomObject) {
+            Optional<VoiLutModule> vlut = ((PrDicomObject) pr).getVoiLUT();
+            if (vlut.isPresent()) {
+                luts.addAll(vlut.get().getLutExplanation());
+            }
         }
         if (!desc.getVoiLUT().getLut().isEmpty()) {
             luts.addAll(desc.getVoiLUT().getLutExplanation());
@@ -210,7 +219,7 @@ public class PresetWindowLevel {
     }
 
     public static PresetWindowLevel buildPresetFromLutData(DicomImageAdapter adapter, LookupTableCV voiLUTsData,
-        boolean pixelPadding, String explanation) {
+        WlPresentation wl, String explanation) {
         if (adapter == null || voiLUTsData == null || explanation == null) {
             return null;
         }
@@ -230,11 +239,11 @@ public class PresetWindowLevel {
 
         minValueLookup = Math.min(minValueLookup, maxValueLookup);
         maxValueLookup = Math.max(minValueLookup, maxValueLookup);
-        int minAllocatedValue = adapter.getMinAllocatedValue(pixelPadding, null);
+        int minAllocatedValue = adapter.getMinAllocatedValue(wl);
         if (minValueLookup < minAllocatedValue) {
             minValueLookup = minAllocatedValue;
         }
-        int maxAllocatedValue = adapter.getMaxAllocatedValue(pixelPadding, null);
+        int maxAllocatedValue = adapter.getMaxAllocatedValue(wl);
         if (maxValueLookup > maxAllocatedValue) {
             maxValueLookup = maxAllocatedValue;
         }

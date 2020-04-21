@@ -3,7 +3,6 @@ package org.dcm4che6.img;
 import java.awt.image.DataBuffer;
 import java.util.Optional;
 
-import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.lut.WindLevelParameters;
 import org.dcm4che6.img.stream.ImageDescriptor;
 import org.dcm4che6.img.util.MathUtil;
@@ -12,6 +11,7 @@ import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
 import org.weasis.opencv.op.ImageProcessor;
+import org.weasis.opencv.op.lut.PresentationStateLut;
 
 /**
  * @author Nicolas Roduit
@@ -30,11 +30,10 @@ public class ImageRendering {
         DicomImageAdapter adapter = new DicomImageAdapter(imageSource, desc);
         WindLevelParameters p = new WindLevelParameters(adapter, params);
         int datatype = ImageConversion.convertToDataType(imageSource.type());
-        boolean pixPadding = p.isPixelPadding();
 
         if (datatype >= DataBuffer.TYPE_BYTE && datatype < DataBuffer.TYPE_INT) {
             LookupTableCV modalityLookup =
-                adapter.getModalityLookup(pixPadding, p.isInverseLut(), p.getPresentationState());
+                adapter.getModalityLookup(p, p.isInverseLut());
             return modalityLookup == null ? imageSource.toImageCV() : modalityLookup.lookup(imageSource.toMat());
         }
         return imageSource;
@@ -48,11 +47,10 @@ public class ImageRendering {
         DicomImageAdapter adapter = new DicomImageAdapter(imageSource, desc);
         WindLevelParameters p = new WindLevelParameters(adapter, params);
         int datatype = ImageConversion.convertToDataType(imageSource.type());
-        boolean pixPadding = p.isPixelPadding();
 
         if (datatype >= DataBuffer.TYPE_BYTE && datatype < DataBuffer.TYPE_INT) {
             LookupTableCV modalityLookup =
-                adapter.getModalityLookup(pixPadding, p.isInverseLut(), p.getPresentationState());
+                adapter.getModalityLookup(p, p.isInverseLut());
             ImageCV imageModalityTransformed =
                 modalityLookup == null ? imageSource.toImageCV() : modalityLookup.lookup(imageSource.toMat());
 
@@ -73,7 +71,7 @@ public class ImageRendering {
             }
 
             LookupTableCV voiLookup = adapter.getVOILookup(p);
-            PrDicomObject prDcm = p.getPresentationState();
+            PresentationStateLut prDcm = p.getPresentationState();
             Optional<LookupTableCV> prLut = prDcm == null ? Optional.empty() : prDcm.getPrLut();
             if (prLut.isEmpty()) {
                 return voiLookup.lookup(imageModalityTransformed);

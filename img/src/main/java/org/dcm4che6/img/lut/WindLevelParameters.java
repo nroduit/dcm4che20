@@ -5,13 +5,15 @@ import java.util.Objects;
 import org.dcm4che6.img.DicomImageAdapter;
 import org.dcm4che6.img.DicomImageReadParam;
 import org.dcm4che6.img.data.PrDicomObject;
+import org.weasis.opencv.op.lut.DefaultWlPresentation;
 import org.weasis.opencv.op.lut.LutShape;
+import org.weasis.opencv.op.lut.WlParams;
 
 /**
  * @author Nicolas Roduit
  *
  */
-public class WindLevelParameters {
+public class WindLevelParameters implements WlParams {
 
     private final double window;
     private final double level;
@@ -36,63 +38,76 @@ public class WindLevelParameters {
             this.allowWinLevelOnColorImage = false;
             this.pixelPadding = true;
             this.inverseLut = false;
-            this.window = adapter.getDefaultWindow(pixelPadding, null);
-            this.level = adapter.getDefaultLevel(pixelPadding, null);
-            this.lutShape = adapter.getDefaultShape(pixelPadding, null);
-            this.levelMin = Math.min(level - window / 2.0, adapter.getMinValue(pixelPadding, null));
-            this.levelMax = Math.max(level + window / 2.0, adapter.getMaxValue(pixelPadding, null));
+            DefaultWlPresentation def = new DefaultWlPresentation(dcmPR, pixelPadding);
+            this.window = adapter.getDefaultWindow(def);
+            this.level = adapter.getDefaultLevel(def);
+            this.lutShape = adapter.getDefaultShape(def);
+            
+            this.levelMin = Math.min(level - window / 2.0, adapter.getMinValue(def));
+            this.levelMax = Math.max(level + window / 2.0, adapter.getMaxValue(def));
         } else {
             this.dcmPR = params.getPresentationState().orElse(null);
             this.fillOutsideLutRange = params.getFillOutsideLutRange().orElse(false);
             this.allowWinLevelOnColorImage = params.getApplyWindowLevelToColorImage().orElse(false);
             this.pixelPadding = params.getApplyPixelPadding().orElse(true);
             this.inverseLut = params.getInverseLut().orElse(false);
-            this.window = params.getWindowWidth().orElseGet(() -> adapter.getDefaultWindow(pixelPadding, dcmPR));
-            this.level = params.getWindowCenter().orElseGet(() -> adapter.getDefaultLevel(pixelPadding, dcmPR));
-            this.lutShape = params.getVoiLutShape().orElseGet(() -> adapter.getDefaultShape(pixelPadding, dcmPR));
+            DefaultWlPresentation def = new DefaultWlPresentation(dcmPR, pixelPadding);
+            this.window = params.getWindowWidth().orElseGet(() -> adapter.getDefaultWindow(def));
+            this.level = params.getWindowCenter().orElseGet(() -> adapter.getDefaultLevel(def));
+            this.lutShape = params.getVoiLutShape().orElseGet(() -> adapter.getDefaultShape(def));
             this.levelMin = Math.min(params.getLevelMin().orElseGet(() -> level - window / 2.0),
-                adapter.getMinValue(pixelPadding, dcmPR));
+                adapter.getMinValue(def));
             this.levelMax = Math.max(params.getLevelMax().orElseGet(() -> level + window / 2.0),
-                adapter.getMaxValue(pixelPadding, dcmPR));
+                adapter.getMaxValue(def));
         }
     }
 
+    @Override
     public double getWindow() {
         return window;
     }
 
+    @Override
     public double getLevel() {
         return level;
     }
 
+    @Override
     public double getLevelMin() {
         return levelMin;
     }
 
+    @Override
     public double getLevelMax() {
         return levelMax;
     }
 
+    @Override
     public boolean isPixelPadding() {
         return pixelPadding;
     }
 
+    @Override
     public boolean isInverseLut() {
         return inverseLut;
     }
 
+    @Override
     public boolean isFillOutsideLutRange() {
         return fillOutsideLutRange;
     }
 
+    @Override
     public boolean isAllowWinLevelOnColorImage() {
         return allowWinLevelOnColorImage;
     }
 
+    @Override
     public LutShape getLutShape() {
         return lutShape;
     }
 
+    @Override
     public PrDicomObject getPresentationState() {
         return dcmPR;
     }

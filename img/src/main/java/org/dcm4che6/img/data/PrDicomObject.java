@@ -16,8 +16,9 @@ import org.dcm4che6.img.lut.ModalityLutModule;
 import org.dcm4che6.img.lut.VoiLutModule;
 import org.dcm4che6.io.DicomInputStream;
 import org.weasis.opencv.data.LookupTableCV;
+import org.weasis.opencv.op.lut.PresentationStateLut;
 
-public class PrDicomObject {
+public class PrDicomObject implements PresentationStateLut {
     private final DicomObject dcmPR;
     private final ModalityLutModule modalityLUT;
     private Optional<VoiLutModule> voiLUT;
@@ -73,14 +74,17 @@ public class PrDicomObject {
         return dcmPR;
     }
 
+    @Override
     public Optional<LookupTableCV> getPrLut() {
         return prLut;
     }
 
+    @Override
     public Optional<String> getPrLutExplanation() {
         return prLutExplanation;
     }
 
+    @Override
     public Optional<String> getPrLutShapeMode() {
         return prLUTShapeMode;
     }
