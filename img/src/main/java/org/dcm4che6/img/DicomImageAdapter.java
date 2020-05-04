@@ -11,11 +11,11 @@ import org.dcm4che6.img.data.PhotometricInterpretation;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.lut.PresetWindowLevel;
 import org.dcm4che6.img.stream.ImageDescriptor;
-import org.dcm4che6.img.util.MathUtil;
-import org.dcm4che6.img.util.SoftHashMap;
 import org.opencv.core.Core.MinMaxLocResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.weasis.core.util.MathUtil;
+import org.weasis.core.util.SoftHashMap;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageConversion;
@@ -161,7 +161,7 @@ public class DicomImageAdapter {
      * In the case where Rescale Slope and Rescale Intercept are used for modality pixel transformation, the output
      * ranges may be signed even if Pixel Representation is unsigned.
      *
-     * @param pixelPadding
+     * @param wl
      *
      * @return
      */

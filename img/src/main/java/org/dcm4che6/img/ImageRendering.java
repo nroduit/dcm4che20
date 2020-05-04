@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.dcm4che6.img.lut.WindLevelParameters;
 import org.dcm4che6.img.stream.ImageDescriptor;
-import org.dcm4che6.img.util.MathUtil;
+import org.weasis.core.util.MathUtil;
 import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;

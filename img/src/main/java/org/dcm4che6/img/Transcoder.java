@@ -10,13 +10,13 @@ import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
-import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.io.DicomOutputStream;
 import org.opencv.core.CvType;
 import org.opencv.core.MatOfInt;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.weasis.core.util.FileUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
@@ -57,8 +57,6 @@ public class Transcoder {
      * @param dstPath
      *            the path of the destination image or the path of a directory in which the source image filename will
      *            be used
-     * @param ext
-     *            the destination image format
      * @param params
      *            the standard image conversion parameters
      * @return

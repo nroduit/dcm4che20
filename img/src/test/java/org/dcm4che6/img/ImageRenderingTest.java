@@ -11,9 +11,9 @@ import java.util.stream.DoubleStream;
 
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.img.stream.ImageDescriptor;
-import org.dcm4che6.img.util.MathUtil;
-import org.dcm4che6.img.util.StringUtil;
 import org.junit.jupiter.api.Test;
+import org.weasis.core.util.MathUtil;
+import org.weasis.core.util.StringUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 

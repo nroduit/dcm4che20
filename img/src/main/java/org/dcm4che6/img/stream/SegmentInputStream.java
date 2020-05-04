@@ -1,11 +1,11 @@
 package org.dcm4che6.img.stream;
 
+import org.weasis.core.util.FileUtil;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.Objects;
-
-import org.dcm4che6.img.util.FileUtil;
 
 /**
  * @author Nicolas Roduit

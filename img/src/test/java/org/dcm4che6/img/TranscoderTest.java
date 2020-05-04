@@ -22,13 +22,13 @@ import org.dcm4che6.img.Transcoder.Format;
 import org.dcm4che6.img.data.ImageHash;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.stream.DicomFileInputStream;
-import org.dcm4che6.img.util.FileUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.weasis.core.util.FileUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 

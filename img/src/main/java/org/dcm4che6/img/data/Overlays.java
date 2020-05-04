@@ -15,11 +15,11 @@ import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.DicomImageUtils;
-import org.dcm4che6.img.util.FileUtil;
 import org.dcm4che6.util.TagUtils;
 import org.opencv.core.Mat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.weasis.core.util.FileUtil;
 import org.weasis.opencv.op.ImageConversion;
 
 /**

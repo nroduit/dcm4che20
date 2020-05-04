@@ -10,7 +10,7 @@
 	<artifactId>dcm4che-img</artifactId>
 	<packaging>bundle</packaging>
 	<properties>
-		<weasis.core.img.version>4.2.0-SNAPSHOT</weasis.core.img.version>
+		<weasis.core.img.version>4.2.1</weasis.core.img.version>
 		<weasis.opencv.native.version>4.2.0-dcm</weasis.opencv.native.version>
 		<!-- Skip test by default except for some architecture related to the native library -->
 		<skipImgTests>false</skipImgTests>
@@ -149,7 +149,7 @@
 					<instructions>
 						<Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
 						<Bundle-Version>${project.version}</Bundle-Version>
-						<Bundle-RequiredExecutionEnvironment>JavaSE-11</Bundle-RequiredExecutionEnvironment>
+						<Bundle-RequiredExecutionEnvironment>JavaSE-${maven.compiler.release}</Bundle-RequiredExecutionEnvironment>
 						<_removeheaders>
 							Bnd-LastModified,Include-Resource,Private-Package,Tool,Built-By,Created-By
 						</_removeheaders>

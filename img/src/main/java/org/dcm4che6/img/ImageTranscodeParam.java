@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 import org.dcm4che6.img.Transcoder.Format;
-import org.dcm4che6.img.util.LangUtil;
+import org.weasis.core.util.LangUtil;
 
 public class ImageTranscodeParam {
     private final DicomImageReadParam readParam;
