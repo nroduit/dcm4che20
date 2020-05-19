@@ -1,10 +1,5 @@
 package org.dcm4che6.img;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
@@ -20,6 +15,11 @@ import org.weasis.core.util.FileUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author Nicolas Roduit
  *
@@ -28,9 +28,13 @@ public class Transcoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(Transcoder.class);
 
     public enum Format {
-        JPEG(".jpg", false, false, false, false), PNG(".png", true, false, false, false),
-        TIF(".tif", true, false, true, true), PNM(".pnm", true, false, false, false),
-        BMP(".bmp", false, false, false, false), HDR(".hdr", false, false, false, true);
+        JPEG(".jpg", false, false, false, false),
+        PNG(".png", true, false, false, false),
+        TIF(".tif", true, false, true, true),
+        JP2(".jp2", true, false, false, false),
+        PNM(".pnm", true, false, false, false),
+        BMP(".bmp", false, false, false, false),
+        HDR(".hdr", false, false, false, true);
 
         final String extension;
         final boolean support16U;
@@ -51,7 +55,7 @@ public class Transcoder {
 
     /**
      * Convert a DICOM image to a standard image with some rendering parameters
-     * 
+     *
      * @param srcPath
      *            the path of the source image
      * @param dstPath
@@ -76,10 +80,10 @@ public class Transcoder {
                 PlanarImage img = reader.getPlanarImage(i, params.getReadParam());
                 boolean rawImg = isPreserveRawImage(params, format, img.type());
                 if (rawImg) {
-                    img = ImageRendering.getModalityLutImage(img, reader.getImageDescriptor(), params.getReadParam());
+                    img = ImageRendering.getModalityLutImage(img, reader.getImageDescriptor(), params.getReadParam(), i);
                 } else {
                     img =
-                        ImageRendering.getDefaultRenderedImage(img, reader.getImageDescriptor(), params.getReadParam());
+                        ImageRendering.getDefaultRenderedImage(img, reader.getImageDescriptor(), params.getReadParam(), i);
                 }
                 Path outPath = writeImage(img, FileUtil.getOutputPath(srcPath, dstPath), format, map, i + 1, indexSize);
                 outFiles.add(outPath);
@@ -90,7 +94,7 @@ public class Transcoder {
 
     /**
      * Convert a DICOM image to another DICOM image with a specific transfer syntax
-     * 
+     *
      * @param srcPath
      *            the path of the source image
      * @param dstPath

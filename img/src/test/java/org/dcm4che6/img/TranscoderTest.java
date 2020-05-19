@@ -3,7 +3,7 @@ package org.dcm4che6.img;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Dimension;
+import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,14 +42,14 @@ public class TranscoderTest {
 
         @Override
         public void accept(Double val) {
-            assertTrue(val == 0.0, "The hash result of the image input is not exaclty the same as the output image");
+            assertTrue(val == 0.0, "The hash result of the image input is not exactly the same as the output image");
         }
     };
     private final Consumer<Double> hasDiff = new Consumer<>() {
 
         @Override
         public void accept(Double val) {
-            assertTrue(val != 0.0, "The hash result of the image input is exaclty the same as the output image");
+            assertTrue(val != 0.0, "The hash result of the image input is exactly the same as the output image");
         }
     };
 
@@ -69,8 +69,8 @@ public class TranscoderTest {
     }
 
     @Test
-    public void dcm2image_ApllyPresentationState() throws Exception {
-        Path in = Path.of(IN_DIR.toString(), "imgForPrLUT.dcm");
+    public void dcm2image_ApllyPresentationStateLUT() throws Exception {
+        Path in = Path.of(IN_DIR.toString(), "imageForPrLUTs.dcm");
         Path inPr = Path.of(IN_DIR.toString(), "prLUTs.dcm");
         DicomImageReadParam readParam = new DicomImageReadParam();
         readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.toString()));
@@ -83,13 +83,32 @@ public class TranscoderTest {
         enumMap.put(ImageHash.PHASH, zeroDiff);
         enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
         enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
-        compareImageContent(Path.of(IN_DIR.toString(), "imgForPrLUT.png"), outFiles.get(0), enumMap);
+        compareImageContent(Path.of(IN_DIR.toString(), "expected_imgForPrLUT.png"), outFiles.get(0), enumMap);
+    }
+
+    @Test
+    public void dcm2image_ApllyPresentationStateOverlay() throws Exception {
+        Path in = Path.of(IN_DIR.toString(), "overlay.dcm");
+        Path inPr = Path.of(IN_DIR.toString(), "prOverlay.dcm");
+        DicomImageReadParam readParam = new DicomImageReadParam();
+        readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.toString()));
+        readParam.setOverlayColor(Color.GREEN);
+        ImageTranscodeParam params = new ImageTranscodeParam(readParam, Format.PNG);
+        List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
+        assertTrue(!outFiles.isEmpty());
+
+        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
+        enumMap.put(ImageHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageHash.PHASH, zeroDiff);
+        enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
+        enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
+        compareImageContent(Path.of(IN_DIR.toString(), "expected_overlay.png"), outFiles.get(0), enumMap);
     }
 
     @ParameterizedTest
     @EnumSource(Format.class)
     public void dcm2image_YBR422Raw(Format format) throws Exception {
-        Path in = Path.of(IN_DIR.toString(), "YBR_422-Raw-Subsample.dcm");
+        Path in = Path.of(IN_DIR.toString(), "ybr422-raw.dcm");
         ImageTranscodeParam params = new ImageTranscodeParam(format);
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
 
@@ -115,14 +134,14 @@ public class TranscoderTest {
         } else {
             params.getWriteJpegParam().setCompressionQuality(80);
         }
-        transcodeDicom("YBR_422-Raw-Subsample.dcm", params, enumMap);
+        transcodeDicom("ybr422-raw.dcm", params, enumMap);
     }
 
     @Test
     public void dcm2dcm_Resize() throws Exception {
         DicomTranscodeParam params = new DicomTranscodeParam(UID.JPEGLSLossyNearLossless);
         params.getReadParam().setSourceRenderSize(new Dimension(128, 128));
-        Path out = transcodeDicom("signed-9.dcm", params, null);
+        Path out = transcodeDicom("signed-raw-9bit.dcm", params, null);
         List<PlanarImage> imgs = readImages(out);
 
         assertEquals(128, imgs.get(0).width(), "The width of image doesn't match");
@@ -140,7 +159,7 @@ public class TranscoderTest {
         enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
 
         DicomTranscodeParam params = new DicomTranscodeParam(tsuid);
-        transcodeDicom("YBR_422-Raw-Subsample.dcm", params, enumMap);
+        transcodeDicom("ybr422-raw.dcm", params, enumMap);
     }
 
     private void compareImageContent(Path in, Path out, Map<ImageHash, Consumer<Double>> enumMap) throws Exception {
@@ -152,7 +171,6 @@ public class TranscoderTest {
         List<PlanarImage> imagesIn = readImages(in);
         List<PlanarImage> imagesOut = readImages(outFiles);
 
-        // Hash content comparison http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html
         assertTrue(imagesIn.size() == imagesOut.size(),
             "The number of image frames of the input file is different of the output file");
 
@@ -166,8 +184,9 @@ public class TranscoderTest {
             System.out.println("=== Output: " + (i >= outFiles.size() ? outFiles.get(i) : outFiles.get(0)));
 
             for (Entry<ImageHash, Consumer<Double>> map : enumMap.entrySet()) {
+                // Hash content comparison http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html
                 double val = map.getKey().compare(imgIn.toMat(), imgOut.toMat());
-                System.out.println(map.getKey().name() + ": " + val);
+                System.out.println("\t" + map.getKey().name() + ": " + val);
                 map.getValue().accept(val);
             }
         }

@@ -1,6 +1,6 @@
 package org.dcm4che6.img;
 
-import java.awt.Point;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -37,6 +37,7 @@ public class DicomImageReadParam extends ImageReadParam {
     private int voiLUTIndex;
     private int overlayActivationMask = 0xf;
     private int overlayGrayscaleValue = 0xffff;
+    private Color overlayColor;
 
     public DicomImageReadParam() {
         this.canSetSourceRenderSize = true;
@@ -224,5 +225,13 @@ public class DicomImageReadParam extends ImageReadParam {
 
     public void setOverlayGrayscaleValue(int overlayGrayscaleValue) {
         this.overlayGrayscaleValue = overlayGrayscaleValue;
+    }
+
+    public Optional<Color> getOverlayColor() {
+        return Optional.ofNullable(overlayColor);
+    }
+
+    public void setOverlayColor(Color overlayColor) {
+        this.overlayColor = overlayColor;
     }
 }

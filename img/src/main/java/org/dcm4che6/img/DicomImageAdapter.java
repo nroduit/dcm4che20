@@ -12,6 +12,7 @@ import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.lut.PresetWindowLevel;
 import org.dcm4che6.img.stream.ImageDescriptor;
 import org.opencv.core.Core.MinMaxLocResult;
+import org.opencv.core.CvType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.util.MathUtil;
@@ -109,7 +110,7 @@ public class DicomImageAdapter {
      */
     private MinMaxLocResult findMinMaxValues(Integer paddingValueMin, Integer paddingValueMax) {
         MinMaxLocResult val;
-        if (ImageConversion.convertToDataType(image.type()) == DataBuffer.TYPE_BYTE) {
+        if (image.type() <= CvType.CV_8S) {
             val = new MinMaxLocResult();
             val.minVal = 0.0;
             val.maxVal = 255.0;
@@ -206,7 +207,7 @@ public class DicomImageAdapter {
                 return prIntercept.getAsDouble();
             }
         }
-        return desc.getModalityLutModule().getRescaleIntercept().orElse(0.0);
+        return desc.getModalityLUT().getRescaleIntercept().orElse(0.0);
     }
 
     public double getRescaleSlope(PrDicomObject dcm) {
@@ -216,7 +217,7 @@ public class DicomImageAdapter {
                 return prSlope.getAsDouble();
             }
         }
-        return desc.getModalityLutModule().getRescaleSlope().orElse(1.0);
+        return desc.getModalityLUT().getRescaleSlope().orElse(1.0);
     }
 
     public double getFullDynamicWidth(WlPresentation wl) {
@@ -290,7 +291,7 @@ public class DicomImageAdapter {
         PrDicomObject pr = wlp != null && wlp.getPresentationState() instanceof PrDicomObject
             ? (PrDicomObject) wlp.getPresentationState() : null;
         LookupTableCV prModLut = (pr != null ? pr.getModalityLutModule().getLut().orElse(null) : null);
-        final LookupTableCV mLUTSeq = prModLut == null ? desc.getModalityLutModule().getLut().orElse(null) : prModLut;
+        final LookupTableCV mLUTSeq = prModLut == null ? desc.getModalityLUT().getLut().orElse(null) : prModLut;
         if (mLUTSeq != null) {
             if (!pixelPadding || paddingValue == null) {
                 if (minMax.minVal >= mLUTSeq.getOffset()

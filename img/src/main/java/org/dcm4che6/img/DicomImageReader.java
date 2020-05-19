@@ -260,12 +260,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         if(param != null && param.getSourceRenderSize() != null) {
             img = ImageProcessor.scale(img.toMat(), param.getSourceRenderSize(), Imgproc.INTER_LANCZOS4);
         }
-
-        /*
-         * Handle overlay in pixel data: extract the overlay, serialize it in a file and set all values to O in the
-         * pixel data.
-         */
-        return dis == null ? img : dis.getImageWithoutEmbeddedOverlay(img);
+        return img;
     }
 
     public PlanarImage getRawImage(int frame, DicomImageReadParam param) throws IOException {

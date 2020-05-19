@@ -1,13 +1,17 @@
 package org.dcm4che6.img.stream;
 
+import java.util.List;
 import java.util.OptionalInt;
 
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
+import org.dcm4che6.img.data.EmbeddedOverlayData;
+import org.dcm4che6.img.data.OverlayData;
 import org.dcm4che6.img.data.Overlays;
 import org.dcm4che6.img.data.PhotometricInterpretation;
 import org.dcm4che6.img.lut.ModalityLutModule;
 import org.dcm4che6.img.lut.VoiLutModule;
+import org.weasis.opencv.op.ImageConversion;
 
 /**
  * @author Nicolas Roduit
@@ -26,7 +30,8 @@ public final class ImageDescriptor {
     private final String sopClassUID;
     private final String bodyPartExamined;
     private final int frames;
-    private final int[] embeddedOverlays;
+    private final List<EmbeddedOverlayData> embeddedOverlayData;
+    private final List<OverlayData> overlayData;
     private final int planarConfiguration;
     private final String presentationLUTShape;
     private final String modality;
@@ -34,7 +39,6 @@ public final class ImageDescriptor {
     private final Integer pixelPaddingRangeLimit;
     private final ModalityLutModule modalityLUT;
     private final VoiLutModule voiLUT;
-    private final boolean floatPixelData;
     private final int highBit;
 
     public ImageDescriptor(DicomObject dcm) {
@@ -56,12 +60,12 @@ public final class ImageDescriptor {
         this.sopClassUID = dcm.getString(Tag.SOPClassUID).orElse(null);
         this.bodyPartExamined = dcm.getString(Tag.BodyPartExamined).orElse(null);
         this.frames = dcm.getInt(Tag.NumberOfFrames).orElse(1);
-        this.embeddedOverlays = Overlays.getEmbeddedOverlayGroupOffsets(dcm);
+        this.embeddedOverlayData = Overlays.getEmbeddedOverlay(dcm);
+        this.overlayData = Overlays.getOverlayGroupOffsets(dcm, Tag.OverlayRows, 0xffff);
         this.presentationLUTShape = dcm.getString(Tag.PresentationLUTShape).orElse(null);
         this.modality = dcm.getString(Tag.Modality).orElse(null);
         this.pixelPaddingValue = getInterValue(dcm, Tag.PixelPaddingValue);
         this.pixelPaddingRangeLimit = getInterValue(dcm, Tag.PixelPaddingRangeLimit);
-        this.floatPixelData = dcm.get(Tag.FloatPixelData).isPresent() || dcm.get(Tag.DoubleFloatPixelData).isPresent();
         this.modalityLUT = new ModalityLutModule(dcm); // TODO handle PixelValueTransformationSequence
         this.voiLUT = new VoiLutModule(dcm); // TODO handle PixelValueTransformationSequence
     }
@@ -139,12 +143,12 @@ public final class ImageDescriptor {
         return planarConfiguration != 0;
     }
 
-    public int[] getEmbeddedOverlays() {
-        return embeddedOverlays;
+    public List<EmbeddedOverlayData> getEmbeddedOverlayData() {
+        return embeddedOverlayData;
     }
 
     public boolean isMultiframeWithEmbeddedOverlays() {
-        return embeddedOverlays.length > 0 && frames > 1;
+        return !embeddedOverlayData.isEmpty() && frames > 1;
     }
 
     public String getPresentationLUTShape() {
@@ -163,7 +167,7 @@ public final class ImageDescriptor {
         return pixelPaddingRangeLimit;
     }
 
-    public ModalityLutModule getModalityLutModule() {
+    public ModalityLutModule getModalityLUT() {
         return modalityLUT;
     }
 
@@ -172,11 +176,14 @@ public final class ImageDescriptor {
     }
 
     public boolean isFloatPixelData() {
-        return floatPixelData;
+        return (bitsAllocated == 32 && !"RTDOSE".equals(modality)) || bitsAllocated == 64;
     }
 
     public int getHighBit() {
         return highBit;
     }
 
+    public List<OverlayData> getOverlayData() {
+        return overlayData;
+    }
 }

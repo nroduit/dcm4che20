@@ -43,17 +43,11 @@ public class DicomImageReaderTest {
     @Test
     public void jpeg2000_lossy_multiframe_multifragments() throws Exception {
         List<PlanarImage> imagesIn = readDicomImage("jpeg2000-multiframe-multifragments.dcm");
-        // Hash content comparison http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html
         assertEquals(19, imagesIn.size(),
             "The number of image frames doesn't match");
+        for (PlanarImage img : imagesIn) {
+            assertEquals(256, img.width(),
+                    "The image size doesn't match");
+        }
     }
-
-    
-//    @Test
-//    public void compressed_multiframe_multifragments() throws Exception {
-//        List<PlanarImage> imagesIn = readDicomImage("35302201-jpls-pkb1k.dcm");
-//        // Hash content comparison http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html
-//        assertEquals(19, imagesIn.size(),
-//            "The number of image frames of the input file is different of the output file");
-//    }
 }

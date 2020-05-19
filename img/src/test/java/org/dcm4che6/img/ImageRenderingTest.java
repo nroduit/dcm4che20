@@ -21,7 +21,7 @@ class ImageRenderingTest {
 
     @Test
     void getModalatyLutImage_Statistics() throws Exception {
-        Path in = Path.of(TranscoderTest.IN_DIR.toString(), "Mono2-CT-16.dcm");
+        Path in = Path.of(TranscoderTest.IN_DIR.toString(), "mono2-CT-16bit.dcm");
         DicomImageReadParam readParam = new DicomImageReadParam();
         Polygon polygon = new Polygon();
         polygon.addPoint(150, 200);
@@ -43,11 +43,10 @@ class ImageRenderingTest {
         }
         try (DicomImageReader reader = new DicomImageReader(Transcoder.dicomImageReaderSpi)) {
             reader.setInput(new DicomFileInputStream(srcPath));
-            int nbFrames = reader.getImageDescriptor().getFrames();
-            for (int i = 0; i < nbFrames; i++) {
+            ImageDescriptor desc = reader.getImageDescriptor();
+            for (int i = 0; i < desc.getFrames(); i++) {
                 PlanarImage img = reader.getPlanarImage(i, params);
-                ImageDescriptor desc = reader.getImageDescriptor();
-                img = ImageRendering.getModalityLutImage(img, desc, params);
+                img = ImageRendering.getModalityLutImage(img, desc, params, i);
 
                 double[][] val = ImageProcessor.meanStdDev(img.toMat(), shape, desc.getPixelPaddingValue(),
                     desc.getPixelPaddingRangeLimit());
