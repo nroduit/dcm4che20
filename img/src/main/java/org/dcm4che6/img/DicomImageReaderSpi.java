@@ -1,14 +1,14 @@
 package org.dcm4che6.img;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Locale;
+import org.dcm4che6.data.Implementation;
+import org.dcm4che6.img.stream.BytesWithImageDescriptor;
+import org.dcm4che6.img.stream.DicomFileInputStream;
 
 import javax.imageio.ImageReader;
 import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
-
-import org.dcm4che6.data.Implementation;
+import java.io.IOException;
+import java.util.Locale;
 
 /**
  * @author Gunter Zeilinger <gunterze@gmail.com>
@@ -16,15 +16,14 @@ import org.dcm4che6.data.Implementation;
  */
 public class DicomImageReaderSpi extends ImageReaderSpi {
 
-    private static final String vendorName = "org.dcm4che";
-    private static final String[] formatNames = { "dicom", "DICOM" };
-    private static final String[] suffixes = { "dcm", "dic", "dicm", "dicom" };
-    private static final String[] MIMETypes = { "application/dicom" };
-    private static final Class<?>[] inputTypes = { ImageInputStream.class, InputStream.class, DicomMetaData.class };
+    private static final String[] dicomFormatNames = { "dicom", "DICOM" };
+    private static final String[] dicomExt = { "dcm", "dic", "dicm", "dicom" };
+    private static final String[] dicomMimeType = { "application/dicom" };
+    private static final Class<?>[] dicomInputTypes = { DicomFileInputStream.class, BytesWithImageDescriptor.class };
 
     public DicomImageReaderSpi() {
-        super(vendorName, Implementation.VERSION_NAME, formatNames, suffixes, MIMETypes, 
-                DicomImageReader.class.getName(), inputTypes,
+        super("dcm4che", Implementation.VERSION_NAME, dicomFormatNames, dicomExt, dicomMimeType,
+                DicomImageReader.class.getName(), dicomInputTypes,
                 null,  // writerSpiNames
                 false, // supportsStandardStreamMetadataFormat
                 null,  // nativeStreamMetadataFormatName
@@ -40,7 +39,7 @@ public class DicomImageReaderSpi extends ImageReaderSpi {
 
     @Override
     public String getDescription(Locale locale) {
-        return "DICOM Image Reader";
+        return "DICOM Image Reader (dcm4che)";
     }
 
     @Override

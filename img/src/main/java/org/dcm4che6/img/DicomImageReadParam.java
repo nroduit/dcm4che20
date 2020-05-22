@@ -184,7 +184,7 @@ public class DicomImageReadParam extends ImageReadParam {
     }
 
     public void setVoiLUTIndex(int voiLUTIndex) {
-        this.voiLUTIndex = voiLUTIndex;
+        this.voiLUTIndex = Math.max(voiLUTIndex, 0);
     }
 
     public int getWindowIndex() {
@@ -193,14 +193,6 @@ public class DicomImageReadParam extends ImageReadParam {
 
     public void setWindowIndex(int windowIndex) {
         this.windowIndex = Math.max(windowIndex, 0);
-    }
-
-    public int getVOILUTIndex() {
-        return voiLUTIndex;
-    }
-
-    public void setVOILUTIndex(int voiLUTIndex) {
-        this.voiLUTIndex = Math.max(voiLUTIndex, 0);
     }
 
     public Optional<PrDicomObject> getPresentationState() {

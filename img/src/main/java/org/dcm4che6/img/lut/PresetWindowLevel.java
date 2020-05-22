@@ -1,23 +1,5 @@
 package org.dcm4che6.img.lut;
 
-import java.awt.image.DataBuffer;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.TreeMap;
-
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-
 import org.dcm4che6.img.DicomImageAdapter;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.stream.ImageDescriptor;
@@ -31,9 +13,19 @@ import org.weasis.opencv.op.lut.LutShape.eFunction;
 import org.weasis.opencv.op.lut.PresentationStateLut;
 import org.weasis.opencv.op.lut.WlPresentation;
 
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import java.awt.image.DataBuffer;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Array;
+import java.util.*;
+
 /**
  * @author Nicolas Roduit
- *
  */
 public class PresetWindowLevel {
     private static final Logger LOGGER = LoggerFactory.getLogger(PresetWindowLevel.class);
@@ -90,7 +82,7 @@ public class PresetWindowLevel {
             return false;
         PresetWindowLevel that = (PresetWindowLevel) o;
         return name.equals(that.name) && window.equals(that.window) && level.equals(that.level)
-            && shape.equals(that.shape);
+                && shape.equals(that.shape);
     }
 
     @Override
@@ -99,7 +91,7 @@ public class PresetWindowLevel {
     }
 
     public static List<PresetWindowLevel> getPresetCollection(DicomImageAdapter adapter, String type,
-        WlPresentation wl) {
+                                                              WlPresentation wl) {
         if (adapter == null) {
             return null;
         }
@@ -140,7 +132,7 @@ public class PresetWindowLevel {
                 }
 
                 PresetWindowLevel preset = new PresetWindowLevel(explanation + dicomKeyWord, windowList.get(i),
-                    levelList.get(i), defaultLutShape);
+                        levelList.get(i), defaultLutShape);
                 if (!presetList.contains(preset)) {
                     presetList.add(preset);
                     k++;
@@ -165,7 +157,7 @@ public class PresetWindowLevel {
                 }
 
                 PresetWindowLevel preset =
-                    buildPresetFromLutData(adapter, voiLUTsData.get(i), wl, explanation + dicomKeyWord);
+                        buildPresetFromLutData(adapter, voiLUTsData.get(i), wl, explanation + dicomKeyWord);
                 if (preset == null) {
                     continue;
                 }
@@ -174,7 +166,7 @@ public class PresetWindowLevel {
         }
 
         PresetWindowLevel autoLevel = new PresetWindowLevel("Auto Level [Image]", adapter.getFullDynamicWidth(wl),
-            adapter.getFullDynamicCenter(wl), defaultLutShape);
+                adapter.getFullDynamicCenter(wl), defaultLutShape);
         presetList.add(autoLevel);
 
         // Exclude Secondary Capture CT and when PR preset
@@ -219,7 +211,7 @@ public class PresetWindowLevel {
     }
 
     public static PresetWindowLevel buildPresetFromLutData(DicomImageAdapter adapter, LookupTableCV voiLUTsData,
-        WlPresentation wl, String explanation) {
+                                                           WlPresentation wl, String explanation) {
         if (adapter == null || voiLUTsData == null || explanation == null) {
             return null;
         }
@@ -277,18 +269,14 @@ public class PresetWindowLevel {
             int eventType;
             while (xmler.hasNext()) {
                 eventType = xmler.next();
-                if (eventType == XMLStreamConstants.START_ELEMENT) {
-                    if ("presets".equals(xmler.getName().getLocalPart())) {
-                        while (xmler.hasNext()) {
-                            readPresetListByModality(xmler, presets);
-                        }
+                if (eventType == XMLStreamConstants.START_ELEMENT && "presets".equals(xmler.getName().getLocalPart())) {
+                    while (xmler.hasNext()) {
+                        readPresetListByModality(xmler, presets);
                     }
                 }
             }
-        }
-
-        catch (Exception e) {
-            LOGGER.error("Cannot read presets file! " + e);
+        } catch (Exception e) {
+            LOGGER.error("Cannot read presets file! ", e);
         } finally {
             FileUtil.safeClose(xmler);
             FileUtil.safeClose(stream);
@@ -297,7 +285,7 @@ public class PresetWindowLevel {
     }
 
     private static void readPresetListByModality(XMLStreamReader xmler, Map<String, List<PresetWindowLevel>> presets)
-        throws XMLStreamException {
+            throws XMLStreamException {
         int eventType = xmler.next();
         String key;
         if (eventType == XMLStreamConstants.START_ELEMENT) {
@@ -311,7 +299,7 @@ public class PresetWindowLevel {
                     String shape = xmler.getAttributeValue(null, "shape");
                     LutShape lutShape = LutShape.getLutShape(shape);
                     PresetWindowLevel preset =
-                        new PresetWindowLevel(name, window, level, lutShape == null ? LutShape.LINEAR : lutShape);
+                            new PresetWindowLevel(name, window, level, lutShape == null ? LutShape.LINEAR : lutShape);
                     List<PresetWindowLevel> presetList = presets.computeIfAbsent(modality, k -> new ArrayList<>());
                     presetList.add(preset);
                 } catch (Exception e) {

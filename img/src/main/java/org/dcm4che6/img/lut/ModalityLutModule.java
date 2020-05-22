@@ -1,9 +1,5 @@
 package org.dcm4che6.img.lut;
 
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalDouble;
-
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
@@ -12,9 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.opencv.data.LookupTableCV;
 
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalDouble;
+
 /**
  * @author Nicolas Roduit
- *
  */
 public class ModalityLutModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModalityLutModule.class);
@@ -28,12 +27,12 @@ public class ModalityLutModule {
 
     /**
      * Modality LUT Module
-     * 
+     * <p>
      * Note: Either a Modality LUT Sequence containing a single Item or Rescale Slope and Intercept values shall be
      * present but not both. This implementation only applies a warning in such a case.
      *
      * @see <a href="http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.11.html">C.11.1 Modality LUT
-     *      Module</a>
+     * Module</a>
      */
     public ModalityLutModule(DicomObject dcm) {
         this.rescaleSlope = OptionalDouble.empty();
@@ -58,11 +57,22 @@ public class ModalityLutModule {
             }
         }
 
+        initModalityLUTSequence(dcm, modality);
+
+        if (rescaleIntercept.isPresent() && lut.isPresent()) {
+            LOGGER.warn(
+                    "Either a Modality LUT Sequence or Rescale Slope and Intercept values shall be present but not both!");
+        }
+
+        logModalityLutConsistency();
+    }
+
+    private void initModalityLUTSequence(DicomObject dcm, String modality) {
         Optional<DicomElement> modSeq = dcm.get(Tag.ModalityLUTSequence);
         if (modSeq.isPresent()) {
             DicomObject dcmLut = modSeq.get().getItem(0);
             if (dcmLut != null && dcmLut.get(Tag.ModalityLUTType).isPresent()
-                && dcmLut.getInts(Tag.LUTDescriptor).isPresent() && dcmLut.get(Tag.LUTData).isPresent()) {
+                    && dcmLut.getInts(Tag.LUTDescriptor).isPresent() && dcmLut.get(Tag.LUTData).isPresent()) {
                 boolean canApplyMLUT = true;
 
                 // See http://dicom.nema.org/medical/dicom/current/output/html/part04.html#figure_N.2-1 and
@@ -80,12 +90,9 @@ public class ModalityLutModule {
                 }
             }
         }
+    }
 
-        if (rescaleIntercept.isPresent() && lut.isPresent()) {
-            LOGGER.warn(
-                "Either a Modality LUT Sequence or Rescale Slope and Intercept values shall be present but not both!");
-        }
-
+    private void logModalityLutConsistency() {
         if (LOGGER.isTraceEnabled()) {
             if (lut.isPresent()) {
                 if (rescaleIntercept.isPresent()) {
@@ -94,10 +101,8 @@ public class ModalityLutModule {
                 if (lutType.isEmpty()) {
                     LOGGER.trace("Modality Type is required if Modality LUT Sequence is present.");
                 }
-            } else if (rescaleIntercept.isPresent()) {
-                if (rescaleSlope.isEmpty()) {
-                    LOGGER.trace("Modality Rescale Slope is required if Rescale Intercept is present.");
-                }
+            } else if (rescaleIntercept.isPresent() && rescaleSlope.isEmpty()) {
+                LOGGER.trace("Modality Rescale Slope is required if Rescale Intercept is present.");
             }
         }
     }

@@ -189,15 +189,6 @@ public class Transcoder {
         return path.resolveSibling(fname + outExt);
     }
 
-    private static Path adaptFileIndex(Path path, Integer index) {
-        if (index == null) {
-            return path;
-        }
-
-        String insert = String.format("$1-%03d$2", index);
-        return path.resolveSibling(path.getFileName().toString().replaceFirst("(.*?)(\\.[^.]+)?$", insert));
-    }
-
     private static Path writeImage(PlanarImage img, Path path, Format ext, MatOfInt map, int index, int indexSize) {
         Path outPath = adaptFileExtension(path, ".dcm", ext.extension);
         outPath = FileUtil.addFileIndex(outPath, index, indexSize);

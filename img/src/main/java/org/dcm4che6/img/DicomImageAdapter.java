@@ -1,12 +1,5 @@
 package org.dcm4che6.img;
 
-import java.awt.image.DataBuffer;
-import java.awt.image.DataBufferUShort;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalDouble;
-
 import org.dcm4che6.img.data.PhotometricInterpretation;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.lut.PresetWindowLevel;
@@ -19,13 +12,15 @@ import org.weasis.core.util.MathUtil;
 import org.weasis.core.util.SoftHashMap;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
-import org.weasis.opencv.op.ImageConversion;
 import org.weasis.opencv.op.ImageProcessor;
-import org.weasis.opencv.op.lut.LutParameters;
-import org.weasis.opencv.op.lut.LutShape;
-import org.weasis.opencv.op.lut.PresentationStateLut;
-import org.weasis.opencv.op.lut.WlParams;
-import org.weasis.opencv.op.lut.WlPresentation;
+import org.weasis.opencv.op.lut.*;
+
+import java.awt.image.DataBuffer;
+import java.awt.image.DataBufferUShort;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * @author Nicolas Roduit
@@ -287,7 +282,7 @@ public class DicomImageAdapter {
      */
     public LookupTableCV getModalityLookup(WlPresentation wlp, boolean inverseLUTAction) {
         Integer paddingValue = desc.getPixelPaddingValue();
-        boolean pixelPadding = wlp == null ? true : wlp.isPixelPadding();
+        boolean pixelPadding = wlp == null || wlp.isPixelPadding();
         PrDicomObject pr = wlp != null && wlp.getPresentationState() instanceof PrDicomObject
             ? (PrDicomObject) wlp.getPresentationState() : null;
         LookupTableCV prModLut = (pr != null ? pr.getModalityLutModule().getLut().orElse(null) : null);

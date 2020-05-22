@@ -1,6 +1,6 @@
 package org.dcm4che6.img;
 
-import org.dcm4che6.img.data.EmbeddedOverlayData;
+import org.dcm4che6.img.data.EmbeddedOverlay;
 import org.dcm4che6.img.data.OverlayData;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.lut.WindLevelParameters;
@@ -10,7 +10,6 @@ import org.weasis.core.util.MathUtil;
 import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.data.PlanarImage;
-import org.weasis.opencv.op.ImageConversion;
 import org.weasis.opencv.op.ImageProcessor;
 import org.weasis.opencv.op.lut.PresentationStateLut;
 
@@ -25,7 +24,6 @@ import java.util.Optional;
  * @author Nicolas Roduit
  */
 public class ImageRendering {
-    private static final byte[] icmColorValues = new byte[]{(byte) 0xFF, (byte) 0x00};
 
     private ImageRendering() {
     }
@@ -111,7 +109,7 @@ public class ImageRendering {
         if(prDcm.isPresent()){
             overlays.addAll(prDcm.get().getOverlays());
         }
-        List<EmbeddedOverlayData> embeddedOverlays = desc.getEmbeddedOverlayData();
+        List<EmbeddedOverlay> embeddedOverlays = desc.getEmbeddedOverlay();
         overlays.addAll(desc.getOverlayData());
 
         if (!embeddedOverlays.isEmpty() || !overlays.isEmpty()) {
@@ -122,7 +120,7 @@ public class ImageRendering {
                 byte[] pixelData = new byte[height * width];
                 byte pixVal = (byte) 255;
 
-                for (EmbeddedOverlayData data : embeddedOverlays) {
+                for (EmbeddedOverlay data : embeddedOverlays) {
                     int mask = 1 << data.getBitPosition();
                     for (int j = 0; j < height; j++) {
                         for (int i = 0; i < width; i++) {
@@ -175,7 +173,7 @@ public class ImageRendering {
      */
     public static PlanarImage getImageWithoutEmbeddedOverlay(PlanarImage img, ImageDescriptor desc) {
         Objects.requireNonNull(img);
-        List<EmbeddedOverlayData> embeddedOverlays = Objects.requireNonNull(desc).getEmbeddedOverlayData();
+        List<EmbeddedOverlay> embeddedOverlays = Objects.requireNonNull(desc).getEmbeddedOverlay();
         if (!embeddedOverlays.isEmpty()) {
             int bitsStored = desc.getBitsStored();
             int bitsAllocated = desc.getBitsAllocated();

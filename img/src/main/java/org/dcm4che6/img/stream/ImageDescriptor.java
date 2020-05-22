@@ -5,13 +5,11 @@ import java.util.OptionalInt;
 
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
-import org.dcm4che6.img.data.EmbeddedOverlayData;
+import org.dcm4che6.img.data.EmbeddedOverlay;
 import org.dcm4che6.img.data.OverlayData;
-import org.dcm4che6.img.data.Overlays;
 import org.dcm4che6.img.data.PhotometricInterpretation;
 import org.dcm4che6.img.lut.ModalityLutModule;
 import org.dcm4che6.img.lut.VoiLutModule;
-import org.weasis.opencv.op.ImageConversion;
 
 /**
  * @author Nicolas Roduit
@@ -30,7 +28,7 @@ public final class ImageDescriptor {
     private final String sopClassUID;
     private final String bodyPartExamined;
     private final int frames;
-    private final List<EmbeddedOverlayData> embeddedOverlayData;
+    private final List<EmbeddedOverlay> embeddedOverlay;
     private final List<OverlayData> overlayData;
     private final int planarConfiguration;
     private final String presentationLUTShape;
@@ -60,8 +58,8 @@ public final class ImageDescriptor {
         this.sopClassUID = dcm.getString(Tag.SOPClassUID).orElse(null);
         this.bodyPartExamined = dcm.getString(Tag.BodyPartExamined).orElse(null);
         this.frames = dcm.getInt(Tag.NumberOfFrames).orElse(1);
-        this.embeddedOverlayData = Overlays.getEmbeddedOverlay(dcm);
-        this.overlayData = Overlays.getOverlayGroupOffsets(dcm, Tag.OverlayRows, 0xffff);
+        this.embeddedOverlay = EmbeddedOverlay.getEmbeddedOverlay(dcm);
+        this.overlayData = OverlayData.getOverlayData(dcm, 0xffff);
         this.presentationLUTShape = dcm.getString(Tag.PresentationLUTShape).orElse(null);
         this.modality = dcm.getString(Tag.Modality).orElse(null);
         this.pixelPaddingValue = getInterValue(dcm, Tag.PixelPaddingValue);
@@ -143,12 +141,12 @@ public final class ImageDescriptor {
         return planarConfiguration != 0;
     }
 
-    public List<EmbeddedOverlayData> getEmbeddedOverlayData() {
-        return embeddedOverlayData;
+    public List<EmbeddedOverlay> getEmbeddedOverlay() {
+        return embeddedOverlay;
     }
 
     public boolean isMultiframeWithEmbeddedOverlays() {
-        return !embeddedOverlayData.isEmpty() && frames > 1;
+        return !embeddedOverlay.isEmpty() && frames > 1;
     }
 
     public String getPresentationLUTShape() {

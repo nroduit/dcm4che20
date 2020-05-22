@@ -11,6 +11,7 @@ import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.op.lut.PresentationStateLut;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -18,7 +19,6 @@ import java.util.Optional;
 /**
  * @author Nicolas Roduit
  */
-
 public class PrDicomObject implements PresentationStateLut {
     private final DicomObject dcmPR;
     private final ModalityLutModule modalityLUT;
@@ -34,7 +34,7 @@ public class PrDicomObject implements PresentationStateLut {
             throw new IllegalStateException("SOPClassUID does not match to a DICOM Presentation State");
         }
         this.modalityLUT = new ModalityLutModule(dcmPR);
-        this.overlays = Overlays.getOverlayGroupOffsets(dcmPR, Tag.OverlayActivationLayer, -1);
+        this.overlays = OverlayData.getPrOverlayData(dcmPR, -1);
         this.voiLUT = buildVoiLut(dcmPR);
 
         Optional<DicomElement> prSeq = dcmPR.get(Tag.PresentationLUTSequence);
@@ -106,7 +106,7 @@ public class PrDicomObject implements PresentationStateLut {
         return !overlays.isEmpty();
     }
 
-    public static PrDicomObject getPresentationState(String prPath) throws Exception {
+    public static PrDicomObject getPresentationState(String prPath) throws IOException {
         try (DicomInputStream dis = new DicomInputStream(new FileInputStream(prPath))) {
             return new PrDicomObject(dis.readDataSet());
         }

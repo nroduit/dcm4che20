@@ -19,7 +19,7 @@ import javax.imageio.ImageIO;
 import org.apache.log4j.BasicConfigurator;
 import org.dcm4che6.data.UID;
 import org.dcm4che6.img.Transcoder.Format;
-import org.dcm4che6.img.data.ImageHash;
+import org.dcm4che6.img.data.ImageContentHash;
 import org.dcm4che6.img.data.PrDicomObject;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.junit.jupiter.api.AfterAll;
@@ -78,11 +78,11 @@ public class TranscoderTest {
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
         assertTrue(!outFiles.isEmpty());
 
-        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
-        enumMap.put(ImageHash.AVERAGE, zeroDiff);
-        enumMap.put(ImageHash.PHASH, zeroDiff);
-        enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
-        enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
+        Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
+        enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageContentHash.PHASH, zeroDiff);
+        enumMap.put(ImageContentHash.BLOCK_MEAN_ONE, zeroDiff);
+        enumMap.put(ImageContentHash.COLOR_MOMENT, zeroDiff);
         compareImageContent(Path.of(IN_DIR.toString(), "expected_imgForPrLUT.png"), outFiles.get(0), enumMap);
     }
 
@@ -97,11 +97,11 @@ public class TranscoderTest {
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
         assertTrue(!outFiles.isEmpty());
 
-        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
-        enumMap.put(ImageHash.AVERAGE, zeroDiff);
-        enumMap.put(ImageHash.PHASH, zeroDiff);
-        enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
-        enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
+        Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
+        enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageContentHash.PHASH, zeroDiff);
+        enumMap.put(ImageContentHash.BLOCK_MEAN_ONE, zeroDiff);
+        enumMap.put(ImageContentHash.COLOR_MOMENT, zeroDiff);
         compareImageContent(Path.of(IN_DIR.toString(), "expected_overlay.png"), outFiles.get(0), enumMap);
     }
 
@@ -114,19 +114,19 @@ public class TranscoderTest {
 
         assertTrue(!outFiles.isEmpty());
 
-        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
-        enumMap.put(ImageHash.AVERAGE, zeroDiff);
-        enumMap.put(ImageHash.PHASH, zeroDiff);
+        Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
+        enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageContentHash.PHASH, zeroDiff);
         compareImageContent(in, outFiles, enumMap);
     }
 
     @ParameterizedTest
     @ValueSource(strings = { UID.JPEG2000, UID.JPEGBaseline1, UID.JPEGLSLossyNearLossless })
     public void dcm2dcm_YBR422Raw_Lossy(String tsuid) throws Exception {
-        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
-        enumMap.put(ImageHash.AVERAGE, zeroDiff);
-        enumMap.put(ImageHash.PHASH, zeroDiff);
-        enumMap.put(ImageHash.COLOR_MOMENT, hasDiff); // JPEG compression mainly reduce the color information
+        Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
+        enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageContentHash.PHASH, zeroDiff);
+        enumMap.put(ImageContentHash.COLOR_MOMENT, hasDiff); // JPEG compression mainly reduce the color information
 
         DicomTranscodeParam params = new DicomTranscodeParam(tsuid);
         if (tsuid == UID.JPEGLSLossyNearLossless) {
@@ -151,22 +151,22 @@ public class TranscoderTest {
     @ParameterizedTest
     @ValueSource(strings = { UID.JPEG2000LosslessOnly, UID.JPEGLossless, UID.JPEGLSLossless })
     public void dcm2dcm_YBR422Raw_Lossless(String tsuid) throws Exception {
-        Map<ImageHash, Consumer<Double>> enumMap = new EnumMap<>(ImageHash.class);
+        Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         // The image content must be fully preserved with lossless compression
-        enumMap.put(ImageHash.AVERAGE, zeroDiff);
-        enumMap.put(ImageHash.PHASH, zeroDiff);
-        enumMap.put(ImageHash.BLOCK_MEAN_ONE, zeroDiff);
-        enumMap.put(ImageHash.COLOR_MOMENT, zeroDiff);
+        enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
+        enumMap.put(ImageContentHash.PHASH, zeroDiff);
+        enumMap.put(ImageContentHash.BLOCK_MEAN_ONE, zeroDiff);
+        enumMap.put(ImageContentHash.COLOR_MOMENT, zeroDiff);
 
         DicomTranscodeParam params = new DicomTranscodeParam(tsuid);
         transcodeDicom("ybr422-raw.dcm", params, enumMap);
     }
 
-    private void compareImageContent(Path in, Path out, Map<ImageHash, Consumer<Double>> enumMap) throws Exception {
+    private void compareImageContent(Path in, Path out, Map<ImageContentHash, Consumer<Double>> enumMap) throws Exception {
         compareImageContent(in, List.of(out), enumMap);
     }
 
-    private void compareImageContent(Path in, List<Path> outFiles, Map<ImageHash, Consumer<Double>> enumMap)
+    private void compareImageContent(Path in, List<Path> outFiles, Map<ImageContentHash, Consumer<Double>> enumMap)
         throws Exception {
         List<PlanarImage> imagesIn = readImages(in);
         List<PlanarImage> imagesOut = readImages(outFiles);
@@ -183,7 +183,7 @@ public class TranscoderTest {
             System.out.println("=== Input: " + in);
             System.out.println("=== Output: " + (i >= outFiles.size() ? outFiles.get(i) : outFiles.get(0)));
 
-            for (Entry<ImageHash, Consumer<Double>> map : enumMap.entrySet()) {
+            for (Entry<ImageContentHash, Consumer<Double>> map : enumMap.entrySet()) {
                 // Hash content comparison http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html
                 double val = map.getKey().compare(imgIn.toMat(), imgOut.toMat());
                 System.out.println("\t" + map.getKey().name() + ": " + val);
@@ -211,7 +211,7 @@ public class TranscoderTest {
         }
     }
 
-    private Path transcodeDicom(String ifname, DicomTranscodeParam params, Map<ImageHash, Consumer<Double>> enumMap)
+    private Path transcodeDicom(String ifname, DicomTranscodeParam params, Map<ImageContentHash, Consumer<Double>> enumMap)
         throws Exception {
         Path in = Path.of(IN_DIR.toString(), ifname);
         Path out = Path.of(OUT_DIR.toString(), params.getOutputTsuid());

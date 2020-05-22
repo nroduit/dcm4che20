@@ -32,8 +32,9 @@ public enum PhotometricInterpretation {
                 case UID.JPEG2000:
                 case UID.JPEG2000Part2MultiComponent:
                     return YBR_ICT;
+                default:
+                    return this;
             }
-            return this;
         }
     },
     YBR_FULL(false, false, true, false),
@@ -88,6 +89,11 @@ public enum PhotometricInterpretation {
         return ybr;
     }
 
+    /**
+     *
+     * @param tsuid the input Transfer Syntax
+     * @return PhotometricInterpretation that must be used according tsuid
+     */
     public PhotometricInterpretation compress(String tsuid) {
         return this;
     }

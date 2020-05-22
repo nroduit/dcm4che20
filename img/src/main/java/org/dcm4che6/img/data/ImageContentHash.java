@@ -9,7 +9,7 @@ import org.opencv.img_hash.MarrHildrethHash;
 import org.opencv.img_hash.PHash;
 import org.opencv.img_hash.RadialVarianceHash;
 
-public enum ImageHash {
+public enum ImageContentHash {
     AVERAGE() {
         @Override
         public ImgHashBase getAlgorithm() {
@@ -56,12 +56,12 @@ public enum ImageHash {
     public abstract ImgHashBase getAlgorithm();
 
     public double compare(Mat imgIn, Mat imgOut) {
-        ImgHashBase hashAlgo = getAlgorithm();
+        ImgHashBase hashAlgorithm = getAlgorithm();
         Mat inHash = new Mat();
         Mat outHash = new Mat();
-        hashAlgo.compute(imgIn, inHash);
-        hashAlgo.compute(imgOut, outHash);
-        return hashAlgo.compare(inHash, outHash);
+        hashAlgorithm.compute(imgIn, inHash);
+        hashAlgorithm.compute(imgOut, outHash);
+        return hashAlgorithm.compare(inHash, outHash);
     }
 
 }
