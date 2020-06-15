@@ -17,10 +17,10 @@ import org.weasis.core.util.StringUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
-class ImageRenderingTest {
+public class ImageRenderingTest {
 
     @Test
-    void getModalatyLutImage_Statistics() throws Exception {
+    public void getModalityLutImage_Statistics() throws Exception {
         Path in = Path.of(TranscoderTest.IN_DIR.toString(), "mono2-CT-16bit.dcm");
         DicomImageReadParam readParam = new DicomImageReadParam();
         Polygon polygon = new Polygon();

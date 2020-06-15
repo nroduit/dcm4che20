@@ -15,6 +15,7 @@
 
   <modules>
     <module>dcmdump</module>
+    <module>dcm2img</module>
     <module>dcm2xml</module>
     <module>dcm2json</module>
     <module>echoscu</module>

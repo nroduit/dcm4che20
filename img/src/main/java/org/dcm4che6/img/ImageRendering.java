@@ -56,8 +56,7 @@ public class ImageRendering {
         int datatype = imageSource.type();
 
         if (datatype >= CvType.CV_8U && datatype < CvType.CV_32S) {
-            LookupTableCV modalityLookup =
-                    adapter.getModalityLookup(p, p.isInverseLut());
+            LookupTableCV modalityLookup = adapter.getModalityLookup(p, p.isInverseLut());
             ImageCV imageModalityTransformed =
                     modalityLookup == null ? imageSource.toImageCV() : modalityLookup.lookup(imageSource.toMat());
 

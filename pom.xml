@@ -32,7 +32,16 @@
     <slf4j.version>1.7.29</slf4j.version>
     <logback.version>1.2.3</logback.version>
     <janino.version>3.0.6</janino.version>
+    <weasis.core.img.version>4.3.0</weasis.core.img.version>
+    <weasis.opencv.native.version>4.3.0-dcm</weasis.opencv.native.version>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>nroduit-mvn-repo-master</id>
+      <url>https://raw.github.com/nroduit/mvn-repo/master/</url>
+    </repository>
+  </repositories>
 
   <build>
     <pluginManagement>

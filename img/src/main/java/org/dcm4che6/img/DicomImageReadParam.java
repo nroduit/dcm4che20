@@ -21,7 +21,6 @@ public class DicomImageReadParam extends ImageReadParam {
 
     private static final String NOT_COMPATIBLE = "Not compatible with the native DICOM Decoder";
 
-
     private Double windowCenter;
     private Double windowWidth;
     private Double levelMin;

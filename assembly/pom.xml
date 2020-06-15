@@ -67,6 +67,11 @@
     </dependency>
     <dependency>
       <groupId>org.dcm4che</groupId>
+      <artifactId>dcm4che-img</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.dcm4che</groupId>
       <artifactId>dcm4che-json</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -78,6 +83,11 @@
     <dependency>
       <groupId>org.dcm4che</groupId>
       <artifactId>dcm4che-xml</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.dcm4che.tool</groupId>
+      <artifactId>dcm4che-tool-dcm2img</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -165,6 +175,45 @@
       <artifactId>janino</artifactId>
       <version>${janino.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.weasis.core</groupId>
+      <artifactId>weasis-core-img</artifactId>
+      <version>${weasis.core.img.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.weasis.thirdparty.org.opencv</groupId>
+      <artifactId>libopencv_java</artifactId>
+      <version>${weasis.opencv.native.version}</version>
+      <type>so</type>
+      <classifier>linux-x86-64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.weasis.thirdparty.org.opencv</groupId>
+      <artifactId>libopencv_java</artifactId>
+      <version>${weasis.opencv.native.version}</version>
+      <type>so</type>
+      <classifier>linux-x86</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.weasis.thirdparty.org.opencv</groupId>
+      <artifactId>libopencv_java</artifactId>
+      <version>${weasis.opencv.native.version}</version>
+      <type>jnilib</type>
+      <classifier>macosx-x86-64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.weasis.thirdparty.org.opencv</groupId>
+      <artifactId>opencv_java</artifactId>
+      <version>${weasis.opencv.native.version}</version>
+      <type>dll</type>
+      <classifier>windows-x86</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.weasis.thirdparty.org.opencv</groupId>
+      <artifactId>opencv_java</artifactId>
+      <version>${weasis.opencv.native.version}</version>
+      <type>dll</type>
+      <classifier>windows-x86-64</classifier>
+    </dependency>
   </dependencies>
-
 </project>

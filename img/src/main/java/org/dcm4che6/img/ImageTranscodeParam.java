@@ -45,8 +45,7 @@ public class ImageTranscodeParam {
     }
 
     /**
-     * It preserves the raw data without applying the window/level values. The default value is TRUE. False will apply
-     * W/L and the output image will be always a 8-bit per sample image.
+     * It preserves the raw data when the pixel depth is more than 8 bit. The default value applies the W/L and is FALSE, the output image will be always a 8-bit per sample image.
      * 
      * @param preserveRawImage
      */

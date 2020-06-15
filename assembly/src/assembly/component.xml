@@ -38,9 +38,11 @@
         <include>org.dcm4che:dcm4che-base</include>
         <include>org.dcm4che:dcm4che-codec</include>
         <include>org.dcm4che:dcm4che-conf-model</include>
+        <include>org.dcm4che:dcm4che-img</include>
         <include>org.dcm4che:dcm4che-json</include>
         <include>org.dcm4che:dcm4che-net</include>
         <include>org.dcm4che:dcm4che-xml</include>
+        <include>org.dcm4che.tool:dcm4che-tool-dcm2img</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcm2json</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcm2xml</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcmdump</include>
@@ -61,6 +63,47 @@
         <include>org.codehaus.janino:janino</include>
         <include>org.codehaus.janino:commons-compiler</include>
         <include>info.picocli:picocli</include>
+        <include>org.weasis.core:weasis-core-img</include>
+      </includes>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+      <outputDirectory>lib/linux-x86</outputDirectory>
+      <includes>
+        <include>*:*:so:linux-x86:*</include>
+      </includes>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+      <outputDirectory>lib/linux-x86-64</outputDirectory>
+      <includes>
+        <include>*:*:so:linux-x86-64:*</include>
+      </includes>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+      <outputDirectory>lib/macosx-x86-64</outputDirectory>
+      <includes>
+        <include>*:*:jnilib:macosx-x86-64:*</include>
+      </includes>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+      <outputDirectory>lib/windows-x86</outputDirectory>
+      <includes>
+        <include>*:*:dll:windows-x86:*</include>
+      </includes>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
+    <dependencySet>
+      <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+      <outputDirectory>lib/windows-x86-64</outputDirectory>
+      <includes>
+        <include>*:*:dll:windows-x86-64:*</include>
       </includes>
       <useProjectArtifact>false</useProjectArtifact>
     </dependencySet>
