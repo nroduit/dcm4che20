@@ -6,6 +6,8 @@ import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.DicomImageUtils;
 import org.dcm4che6.img.lut.ModalityLutModule;
 import org.dcm4che6.img.lut.VoiLutModule;
+import org.dcm4che6.img.stream.ImageDescriptor;
+import org.dcm4che6.img.util.DicomObjectUtil;
 import org.dcm4che6.io.DicomInputStream;
 import org.weasis.opencv.data.LookupTableCV;
 import org.weasis.opencv.op.lut.PresentationStateLut;
@@ -23,19 +25,25 @@ public class PrDicomObject implements PresentationStateLut {
     private final DicomObject dcmPR;
     private final ModalityLutModule modalityLUT;
     private final List<OverlayData> overlays;
+    private final List<OverlayData> shutterOverlays;
     private final Optional<VoiLutModule> voiLUT;
     private final Optional<LookupTableCV> prLut;
     private final Optional<String> prLutExplanation;
     private final Optional<String> prLUTShapeMode;
 
     public PrDicomObject(DicomObject dcmPR) {
+        this(dcmPR, null);
+    }
+
+    public PrDicomObject(DicomObject dcmPR, ImageDescriptor desc) {
         this.dcmPR = Objects.requireNonNull(dcmPR);
         if (!"1.2.840.10008.5.1.4.1.1.11.1".equals(dcmPR.getString(Tag.SOPClassUID).orElse(null))) {
             throw new IllegalStateException("SOPClassUID does not match to a DICOM Presentation State");
         }
-        this.modalityLUT = new ModalityLutModule(dcmPR);
-        this.overlays = OverlayData.getPrOverlayData(dcmPR, -1);
+        this.modalityLUT = desc == null ? new ModalityLutModule(dcmPR) : desc.getModalityLUT();
         this.voiLUT = buildVoiLut(dcmPR);
+        this.overlays = OverlayData.getPrOverlayData(dcmPR, -1);
+        this.shutterOverlays = desc == null ? OverlayData.getOverlayData(dcmPR, 0xffff) : desc.getOverlayData();
 
         Optional<DicomElement> prSeq = dcmPR.get(Tag.PresentationLUTSequence);
         if (prSeq.isPresent()) {
@@ -66,8 +74,7 @@ public class PrDicomObject implements PresentationStateLut {
     }
 
     private static Optional<VoiLutModule> buildVoiLut(DicomObject dcmPR) {
-        Optional<DicomElement> softVoiSeq = dcmPR.get(Tag.SoftcopyVOILUTSequence);
-        DicomObject seqDcm = softVoiSeq.isEmpty() ? null : softVoiSeq.get().getItem(0);
+        DicomObject seqDcm = DicomObjectUtil.getNestedDataset(dcmPR, Tag.SoftcopyVOILUTSequence );
         return seqDcm == null ? Optional.empty() : Optional.of(new VoiLutModule(seqDcm));
     }
 
@@ -102,8 +109,16 @@ public class PrDicomObject implements PresentationStateLut {
         return overlays;
     }
 
+    public List<OverlayData> getShutterOverlays() {
+        return shutterOverlays;
+    }
+
     public boolean hasOverlay() {
         return !overlays.isEmpty();
+    }
+
+    public DicomObject getReferencedSeriesSequence() {
+        return DicomObjectUtil.getNestedDataset(dcmPR, Tag.ReferencedSeriesSequence);
     }
 
     public static PrDicomObject getPresentationState(String prPath) throws IOException {

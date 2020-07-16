@@ -2,8 +2,15 @@ package org.dcm4che6.img.data;
 
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
+import org.dcm4che6.img.DicomImageReadParam;
 import org.dcm4che6.img.DicomImageUtils;
+import org.dcm4che6.img.stream.ImageDescriptor;
+import org.opencv.core.CvType;
+import org.weasis.opencv.data.ImageCV;
+import org.weasis.opencv.data.PlanarImage;
+import org.weasis.opencv.op.ImageProcessor;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -91,4 +98,75 @@ public class OverlayData {
     public static List<OverlayData> getPrOverlayData(DicomObject dcm, int activationMask) {
         return getOverlayData(dcm, activationMask, true);
     }
+
+    public static PlanarImage getOverlayImage(final PlanarImage imageSource, PlanarImage currentImage, ImageDescriptor desc, DicomImageReadParam params, int frameIndex) {
+        Optional<PrDicomObject> prDcm = params.getPresentationState();
+        List<OverlayData> overlays = new ArrayList<>();
+        if(prDcm.isPresent()){
+            overlays.addAll(prDcm.get().getOverlays());
+        }
+        List<EmbeddedOverlay> embeddedOverlays = desc.getEmbeddedOverlay();
+        overlays.addAll(desc.getOverlayData());
+
+        if (!embeddedOverlays.isEmpty() || !overlays.isEmpty()) {
+            int width = currentImage.width();
+            int height = currentImage.height();
+            if (width == imageSource.width() && height == imageSource.height()) {
+                ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1);
+                byte[] pixelData = new byte[height * width];
+                byte pixVal = (byte) 255;
+
+                for (EmbeddedOverlay data : embeddedOverlays) {
+                    int mask = 1 << data.getBitPosition();
+                    for (int j = 0; j < height; j++) {
+                        for (int i = 0; i < width; i++) {
+                            double[] pix = imageSource.get(j, i);
+                            if ((((int) pix[0]) & mask) != 0) {
+                                pixelData[j * width + i] = pixVal;
+                            }
+                        }
+                    }
+                }
+
+                applyOverlay(overlays, pixelData, frameIndex, width);
+                overlay.put(0, 0, pixelData);
+                return ImageProcessor.overlay(currentImage.toMat(), overlay, params.getOverlayColor().orElse(Color.WHITE));
+            }
+        }
+        return currentImage;
+    }
+    private static void applyOverlay(List<OverlayData> overlays, byte[] pixelData, int frameIndex, int width){
+        byte pixVal = (byte) 255;
+        for (OverlayData data : overlays) {
+            int imageFrameOrigin = data.getImageFrameOrigin();
+            int framesInOverlay = data.getFramesInOverlay();
+            int overlayFrameIndex = frameIndex - imageFrameOrigin + 1;
+            if (overlayFrameIndex >= 0 && overlayFrameIndex < framesInOverlay) {
+                int ovHeight = data.getRows();
+                int ovWidth = data.getColumns();
+                int ovOff = ovHeight * ovWidth * overlayFrameIndex;
+                byte[] pix = data.getData();
+                int x0 = data.getOrigin()[1] - 1;
+                int y0 = data.getOrigin()[0] - 1;
+                for (int j = y0; j < ovHeight; j++) {
+                    for (int i = x0; i < ovWidth; i++) {
+                        int index = ovOff + (j - y0) * ovWidth + (i - x0);
+                        int b = pix[index / 8] & 0xff;
+                        if ((b  & (1 << (index % 8))) != 0) {
+                            pixelData[j * width + i] = pixVal;
+                        }
+                    }
+                }
+            }
+        }
+    }
+   public static PlanarImage getOverlayImage(PlanarImage imageSource, List<OverlayData> overlays, int frameIndex){
+       int width = imageSource.width();
+       int height = imageSource.height();
+       ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1);
+       byte[] pixelData = new byte[height * width];
+       applyOverlay(overlays, pixelData, frameIndex, width);
+       overlay.put(0, 0, pixelData);
+       return overlay;
+   }
 }

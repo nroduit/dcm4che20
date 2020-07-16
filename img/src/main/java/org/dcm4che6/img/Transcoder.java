@@ -3,18 +3,21 @@ package org.dcm4che6.img;
 import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
+import org.dcm4che6.img.op.MaskArea;
 import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.io.DicomOutputStream;
-import org.opencv.core.CvType;
-import org.opencv.core.MatOfInt;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.util.FileUtil;
+import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
+import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -80,7 +83,7 @@ public class Transcoder {
                 PlanarImage img = reader.getPlanarImage(i, params.getReadParam());
                 boolean rawImg = isPreserveRawImage(params, format, img.type());
                 if (rawImg) {
-                    img = ImageRendering.getModalityLutImage(img, reader.getImageDescriptor(), params.getReadParam(), i);
+                    img = ImageRendering.getRawRenderedImage(img, reader.getImageDescriptor(), params.getReadParam());
                 } else {
                     img =
                         ImageRendering.getDefaultRenderedImage(img, reader.getImageDescriptor(), params.getReadParam(), i);
@@ -119,15 +122,18 @@ public class Transcoder {
             }
 
             outPath = adaptFileExtension(FileUtil.getOutputPath(srcPath, dstPath), ".dcm", ".dcm");
+            String stationName = dataSet.getString(Tag.StationName).orElse("*");
             List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
+            applyMaskAreas(images, params, stationName);
             String dstTsuid = params.getOutputTsuid();
             DicomOutputData imgData = new DicomOutputData(images, dicomMetaData.getImageDescriptor(), dstTsuid);
             try (DicomOutputStream dos = new DicomOutputStream(Files.newOutputStream(outPath))) {
                 dos.writeFileMetaInformation(dicomMetaData.getDicomObject().createFileMetaInformation(dstTsuid));
+
                 if (DicomOutputData.isNativeSyntax(dstTsuid)) {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
-                    int[] jpegWriteParams = DicomOutputData.adaptTagsToImage(dataSet, images.get(0),
+                    int[] jpegWriteParams = imgData.adaptTagsToImage(dataSet, images.get(0),
                         dicomMetaData.getImageDescriptor(), params.getWriteJpegParam());
                     dos.writeDataSet(dataSet);
                     imgData.writCompressedImageData(dos, jpegWriteParams);
@@ -144,9 +150,38 @@ public class Transcoder {
             reader.setInput(desc);
 
             List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
+            applyMaskAreas(images, params, desc.getImageDescriptor().getStationName());
             String dstTsuid = params.getOutputTsuid();
             return new DicomOutputData(images, desc.getImageDescriptor(), dstTsuid);
         }
+    }
+
+    private static void applyMaskAreas(List<PlanarImage> images, DicomTranscodeParam params, String key) {
+        if (!params.getMaskMap().isEmpty()) {
+            MaskArea mask = params.getMaskMap().get(key);
+            if (mask == null) {
+                mask = params.getMaskMap().get("*");
+            }
+            if (mask != null) {
+                for (int i = 0; i < images.size(); i++) {
+                    images.set(i, drawShape(images.get(i).toMat(), mask));
+                }
+            }
+        }
+    }
+
+    private static ImageCV drawShape(Mat srcImg, MaskArea maskArea) {
+        if (maskArea != null && !maskArea.getShapeList().isEmpty()) {
+            Color c = maskArea.getColor();
+            ImageCV dstImg = new ImageCV();
+            srcImg.copyTo(dstImg);
+            for (Shape shape :maskArea.getShapeList()) {
+                List<MatOfPoint> pts = ImageProcessor.transformShapeToContour(shape, true);
+                Imgproc.fillPoly(dstImg, pts, new Scalar(c.getBlue(), c.getGreen(), c.getRed()));
+            }
+            return dstImg;
+        }
+        return ImageCV.toImageCV(srcImg);
     }
 
     private static int getCompressionRatio(ImageTranscodeParam params) {

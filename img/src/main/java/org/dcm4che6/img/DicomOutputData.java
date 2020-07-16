@@ -135,7 +135,7 @@ public class DicomOutputData {
         data.setString(Tag.PhotometricInterpretation, VR.CS, pmi);
     }
 
-    public static int[] adaptTagsToImage(DicomObject data, PlanarImage img, ImageDescriptor desc,
+    public int[] adaptTagsToImage(DicomObject data, PlanarImage img, ImageDescriptor desc,
         DicomJpegWriteParam param) {
 
         int cvType = img.type();
@@ -144,7 +144,11 @@ public class DicomOutputData {
         int depth = CvType.depth(cvType);
         boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U;
         int dcmFlags = signed ? Imgcodecs.DICOM_FLAG_SIGNED : Imgcodecs.DICOM_FLAG_UNSIGNED;
-        int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
+        PhotometricInterpretation pmi = desc.getPhotometricInterpretation();
+        if (img.channels() > 1) {
+            pmi = PhotometricInterpretation.RGB.compress(tsuid);
+        }
+        int epi = getCodecColorSpace(pmi);
         int bitAllocated = elemSize * 8;
         int bitCompressed = desc.getBitsCompressed();
         if (bitCompressed > bitAllocated) {
@@ -152,11 +156,11 @@ public class DicomOutputData {
         }
         int bitCompressedForEncoder = bitCompressed;
         int jpeglsNLE = param.getNearLosslessError();
-        TransferSyntaxType tsuid = param.getType();
+        TransferSyntaxType ts = param.getType();
         int compressType = Imgcodecs.DICOM_CP_JPG;
-        if (tsuid == TransferSyntaxType.JPEG_2000) {
+        if (ts == TransferSyntaxType.JPEG_2000) {
             compressType = Imgcodecs.DICOM_CP_J2K;
-        } else if (tsuid == TransferSyntaxType.JPEG_LS) {
+        } else if (ts == TransferSyntaxType.JPEG_LS) {
             compressType = Imgcodecs.DICOM_CP_JPLS;
             if (signed) {
                 LOGGER.warn("Force compression to JPEG-LS lossless as lossy is not adapted to signed data.");
@@ -203,14 +207,30 @@ public class DicomOutputData {
         data.setInt(Tag.BitsStored, VR.US, bitCompressed);
         data.setInt(Tag.HighBit, VR.US, bitCompressed - 1);
         data.setInt(Tag.PixelRepresentation, VR.US, signed ? 1 : 0);
-        String pmi = desc.getPhotometricInterpretation().toString();
         if (img.channels() > 1) {
-            pmi = PhotometricInterpretation.RGB.toString();
             data.setInt(Tag.PlanarConfiguration, VR.US, 0);
         }
-        data.setString(Tag.PhotometricInterpretation, VR.CS, pmi);
+        data.setString(Tag.PhotometricInterpretation, VR.CS, pmi.toString());
 
         return params;
+    }
+
+    private static int getCodecColorSpace(PhotometricInterpretation pi) {
+        if (PhotometricInterpretation.MONOCHROME1 == pi) {
+            return Imgcodecs.EPI_Monochrome1;
+        } else if (PhotometricInterpretation.MONOCHROME2 == pi) {
+            return Imgcodecs.EPI_Monochrome2;
+        } else if (PhotometricInterpretation.RGB == pi) {
+            return Imgcodecs.EPI_RGB;
+        } else if (PhotometricInterpretation.YBR_FULL == pi) {
+            return Imgcodecs.EPI_YBR_Full;
+        } else if (PhotometricInterpretation.YBR_FULL_422 == pi) {
+            return Imgcodecs.EPI_YBR_Full_422;
+        } else if (PhotometricInterpretation.YBR_PARTIAL_422 == pi) {
+            return Imgcodecs.EPI_YBR_Partial_422;
+        } else { // Palette, HSV, ARGB, CMYK
+            return Imgcodecs.EPI_Unknown;
+        }
     }
 
     public static boolean isNativeSyntax(String uid) {

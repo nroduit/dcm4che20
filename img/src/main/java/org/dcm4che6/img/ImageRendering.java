@@ -28,10 +28,14 @@ public class ImageRendering {
     private ImageRendering() {
     }
 
-    public static PlanarImage getModalityLutImage(final PlanarImage imageSource, ImageDescriptor desc,
-                                                  DicomImageReadParam params, int frameIndex) {
+    public static PlanarImage getRawRenderedImage(final PlanarImage imageSource, ImageDescriptor desc, DicomImageReadParam params) {
         PlanarImage img = getImageWithoutEmbeddedOverlay(imageSource, desc);
         DicomImageAdapter adapter = new DicomImageAdapter(img, desc);
+        return getModalityLutImage(adapter, params );
+    }
+
+    public static PlanarImage getModalityLutImage(DicomImageAdapter adapter, DicomImageReadParam params) {
+        PlanarImage img = adapter.getImage();
         WindLevelParameters p = new WindLevelParameters(adapter, params);
         int datatype = img.type();
 
@@ -46,12 +50,19 @@ public class ImageRendering {
     public static PlanarImage getDefaultRenderedImage(final PlanarImage imageSource, ImageDescriptor desc, DicomImageReadParam params, int frameIndex) {
         PlanarImage img = getImageWithoutEmbeddedOverlay(imageSource, desc);
         img = getVoiLutImage(img, desc, params);
-        return getOverlays(imageSource, img, desc, params, frameIndex);
+        return OverlayData.getOverlayImage(imageSource, img, desc, params, frameIndex);
     }
 
     public static PlanarImage getVoiLutImage(final PlanarImage imageSource, ImageDescriptor desc,
-                                              DicomImageReadParam params) {
+                                             DicomImageReadParam params) {
         DicomImageAdapter adapter = new DicomImageAdapter(imageSource, desc);
+        return getVoiLutImage(adapter, params);
+    }
+
+    public static PlanarImage getVoiLutImage(DicomImageAdapter adapter, DicomImageReadParam params) {
+        PlanarImage imageSource = adapter.getImage();
+        ImageDescriptor desc = adapter.getImageDescriptor();
+
         WindLevelParameters p = new WindLevelParameters(adapter, params);
         int datatype = imageSource.type();
 
@@ -76,9 +87,12 @@ public class ImageRendering {
                 return imageModalityTransformed;
             }
 
-            LookupTableCV voiLookup = adapter.getVOILookup(p);
             PresentationStateLut prDcm = p.getPresentationState();
             Optional<LookupTableCV> prLut = prDcm == null ? Optional.empty() : prDcm.getPrLut();
+            LookupTableCV voiLookup = null;
+            if(prLut.isEmpty() || p.getLutShape().getLookup() != null){
+                voiLookup = adapter.getVOILookup(p);
+            }
             if (prLut.isEmpty()) {
                 return voiLookup.lookup(imageModalityTransformed);
             }
@@ -100,65 +114,6 @@ public class ImageRendering {
             return ImageProcessor.rescaleToByte(ImageCV.toMat(imageSource), slope, yint);
         }
         return null;
-    }
-
-    public static PlanarImage getOverlays(final PlanarImage imageSource, PlanarImage currentImage, ImageDescriptor desc, DicomImageReadParam params, int frameIndex) {
-        Optional<PrDicomObject> prDcm = params.getPresentationState();
-        List<OverlayData> overlays = new ArrayList<>();
-        if(prDcm.isPresent()){
-            overlays.addAll(prDcm.get().getOverlays());
-        }
-        List<EmbeddedOverlay> embeddedOverlays = desc.getEmbeddedOverlay();
-        overlays.addAll(desc.getOverlayData());
-
-        if (!embeddedOverlays.isEmpty() || !overlays.isEmpty()) {
-            int width = currentImage.width();
-            int height = currentImage.height();
-            if (width == imageSource.width() && height == imageSource.height()) {
-                ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1);
-                byte[] pixelData = new byte[height * width];
-                byte pixVal = (byte) 255;
-
-                for (EmbeddedOverlay data : embeddedOverlays) {
-                    int mask = 1 << data.getBitPosition();
-                    for (int j = 0; j < height; j++) {
-                        for (int i = 0; i < width; i++) {
-                            double[] pix = imageSource.get(j, i);
-                            if ((((int) pix[0]) & mask) != 0) {
-                                pixelData[j * width + i] = pixVal;
-                            }
-                        }
-                    }
-                }
-
-                for (OverlayData data : overlays) {
-                    int imageFrameOrigin = data.getImageFrameOrigin();
-                    int framesInOverlay = data.getFramesInOverlay();
-                    int overlayFrameIndex = frameIndex - imageFrameOrigin + 1;
-                    if (overlayFrameIndex >= 0 && overlayFrameIndex < framesInOverlay) {
-                        int ovHeight = data.getRows();
-                        int ovWidth = data.getColumns();
-                        int ovOff = ovHeight * ovWidth * overlayFrameIndex;
-                        byte[] pix = data.getData();
-                        int x0 = data.getOrigin()[1] - 1;
-                        int y0 = data.getOrigin()[0] - 1;
-                        for (int j = y0; j < ovHeight; j++) {
-                            for (int i = x0; i < ovWidth; i++) {
-                                int index = ovOff + (j - y0) * ovWidth + (i - x0);
-                                int b = pix[index / 8] & 0xff;
-                                if ((b  & (1 << (index % 8))) != 0) {
-                                    pixelData[j * width + i] = pixVal;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                overlay.put(0, 0, pixelData);
-                return ImageProcessor.overlay(currentImage.toMat(), overlay, params.getOverlayColor().orElse(Color.WHITE));
-            }
-        }
-        return currentImage;
     }
 
     /**

@@ -235,7 +235,11 @@ public class DicomImageAdapter {
     }
 
     public synchronized List<PresetWindowLevel> getPresetList(WlPresentation wl) {
-        if (windowingPresetCollection == null && minMax != null) {
+        return  getPresetList(wl, false);
+    }
+
+    public synchronized List<PresetWindowLevel> getPresetList(WlPresentation wl, boolean reload) {
+        if (minMax != null && (windowingPresetCollection == null || reload)) {
             windowingPresetCollection = PresetWindowLevel.getPresetCollection(this, "[DICOM]", wl);
         }
         return windowingPresetCollection;

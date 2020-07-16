@@ -762,20 +762,24 @@ public class DicomImageUtils {
             if (lut.isEmpty()) {
                 throw new IllegalArgumentException("Missing LUT Data!");
             }
-            int[] segm = lut.get();
             if (bits == 8) {
                 throw new IllegalArgumentException("Segmented LUT Data with LUT Descriptor: bits=8");
             }
             data = new byte[len];
-            inflateSegmentedLut(segm, data);
+            inflateSegmentedLut(lut.get(), data);
         } else if (bits == 16 || odata.get().length != len) {
             data = odata.get();
             if (data.length != len << 1) {
                 lutLengthMismatch(data.length, len);
             }
+
+            int hilo = 1;
+            if (bits == 8) {
+                hilo = 1 - hilo; // padded high bits -> use low bits
+            }
             byte[] bs = new byte[data.length >> 1];
             for (int i = 0; i < bs.length; i++) {
-                bs[i] = data[(i << 1)];
+                bs[i] = data[(i << 1) | hilo];
             }
             data = bs;
         }

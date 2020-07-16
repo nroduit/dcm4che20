@@ -38,6 +38,7 @@ public final class ImageDescriptor {
     private final ModalityLutModule modalityLUT;
     private final VoiLutModule voiLUT;
     private final int highBit;
+    private final String stationName;
 
     public ImageDescriptor(DicomObject dcm) {
         this(dcm, 0);
@@ -57,6 +58,7 @@ public final class ImageDescriptor {
         this.planarConfiguration = dcm.getInt(Tag.PlanarConfiguration).orElse(0);
         this.sopClassUID = dcm.getString(Tag.SOPClassUID).orElse(null);
         this.bodyPartExamined = dcm.getString(Tag.BodyPartExamined).orElse(null);
+        this.stationName =  dcm.getString(Tag.StationName).orElse(null);
         this.frames = dcm.getInt(Tag.NumberOfFrames).orElse(1);
         this.embeddedOverlay = EmbeddedOverlay.getEmbeddedOverlay(dcm);
         this.overlayData = OverlayData.getOverlayData(dcm, 0xffff);
@@ -115,6 +117,10 @@ public final class ImageDescriptor {
 
     public String getBodyPartExamined() {
         return bodyPartExamined;
+    }
+
+    public String getStationName() {
+        return stationName;
     }
 
     public int getFrames() {

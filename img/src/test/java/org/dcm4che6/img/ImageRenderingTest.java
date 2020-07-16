@@ -46,7 +46,7 @@ public class ImageRenderingTest {
             ImageDescriptor desc = reader.getImageDescriptor();
             for (int i = 0; i < desc.getFrames(); i++) {
                 PlanarImage img = reader.getPlanarImage(i, params);
-                img = ImageRendering.getModalityLutImage(img, desc, params, i);
+                img = ImageRendering.getRawRenderedImage(img, desc, params);
 
                 double[][] val = ImageProcessor.meanStdDev(img.toMat(), shape, desc.getPixelPaddingValue(),
                     desc.getPixelPaddingRangeLimit());

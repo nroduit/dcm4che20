@@ -169,8 +169,8 @@ public class PresetWindowLevel {
                 adapter.getFullDynamicCenter(wl), defaultLutShape);
         presetList.add(autoLevel);
 
-        // Exclude Secondary Capture CT and when PR preset
-        if (adapter.getBitsStored() > 8 && !"[PR]".equals(type)) {
+        // Exclude Secondary Capture CT
+        if (adapter.getBitsStored() > 8) {
             List<PresetWindowLevel> modPresets = presetListByModality.get(desc.getModality());
             if (modPresets != null) {
                 presetList.addAll(modPresets);
