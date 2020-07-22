@@ -29,7 +29,7 @@
     <jakarta.json.bind.version>1.0.1</jakarta.json.bind.version>
     <yasson.version>1.0.3</yasson.version>
     <picocli.version>4.0.0-beta-1b</picocli.version>
-    <slf4j.version>1.7.29</slf4j.version>
+    <slf4j.version>1.7.30</slf4j.version>
     <logback.version>1.2.3</logback.version>
     <janino.version>3.0.6</janino.version>
     <weasis.core.img.version>4.4.0</weasis.core.img.version>
@@ -75,7 +75,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.0.0-M4</version>
+          <version>3.0.0-M5</version>
           <configuration>
             <forkCount>0</forkCount>
           </configuration>

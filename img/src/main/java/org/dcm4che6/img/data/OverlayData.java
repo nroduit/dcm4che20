@@ -112,7 +112,7 @@ public class OverlayData {
             int width = currentImage.width();
             int height = currentImage.height();
             if (width == imageSource.width() && height == imageSource.height()) {
-                ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1);
+                ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1); // NOSONAR
                 byte[] pixelData = new byte[height * width];
                 byte pixVal = (byte) 255;
 
@@ -163,7 +163,7 @@ public class OverlayData {
    public static PlanarImage getOverlayImage(PlanarImage imageSource, List<OverlayData> overlays, int frameIndex){
        int width = imageSource.width();
        int height = imageSource.height();
-       ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1);
+       ImageCV overlay = new ImageCV(height, width, CvType.CV_8UC1); // NOSONAR
        byte[] pixelData = new byte[height * width];
        applyOverlay(overlays, pixelData, frameIndex, width);
        overlay.put(0, 0, pixelData);

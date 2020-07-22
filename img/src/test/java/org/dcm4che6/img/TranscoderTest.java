@@ -1,6 +1,7 @@
 package org.dcm4che6.img;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.*;
@@ -38,23 +39,11 @@ public class TranscoderTest {
 
     private static DicomImageReader reader;
 
-    private final Consumer<Double> zeroDiff = new Consumer<>() {
-
-        @Override
-        public void accept(Double val) {
-            assertTrue(val == 0.0, "The hash result of the image input is not exactly the same as the output image");
-        }
-    };
-    private final Consumer<Double> hasDiff = new Consumer<>() {
-
-        @Override
-        public void accept(Double val) {
-            assertTrue(val != 0.0, "The hash result of the image input is exactly the same as the output image");
-        }
-    };
+    private final Consumer<Double> zeroDiff = val -> assertTrue(val == 0.0, "The hash result of the image input is not exactly the same as the output image");
+    private final Consumer<Double> hasDiff = val -> assertTrue(val != 0.0, "The hash result of the image input is exactly the same as the output image");
 
     @BeforeAll
-    protected static void setUpBeforeClass() throws Exception {
+    public static void setUpBeforeClass() throws Exception {
         BasicConfigurator.configure();
         FileUtil.delete(OUT_DIR);
         Files.createDirectories(OUT_DIR);
@@ -62,7 +51,7 @@ public class TranscoderTest {
     }
 
     @AfterAll
-    protected static void tearDownAfterClass() throws Exception {
+    public static void tearDownAfterClass() throws Exception {
         if (reader != null) {
             reader.dispose();
         }
@@ -76,7 +65,7 @@ public class TranscoderTest {
         readParam.setPresentationState(PrDicomObject.getPresentationState(inPr.toString()));
         ImageTranscodeParam params = new ImageTranscodeParam(readParam, Format.PNG);
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
-        assertTrue(!outFiles.isEmpty());
+        assertFalse(outFiles.isEmpty());
 
         Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
@@ -95,7 +84,7 @@ public class TranscoderTest {
         readParam.setOverlayColor(Color.GREEN);
         ImageTranscodeParam params = new ImageTranscodeParam(readParam, Format.PNG);
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
-        assertTrue(!outFiles.isEmpty());
+        assertFalse(outFiles.isEmpty());
 
         Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
@@ -112,7 +101,7 @@ public class TranscoderTest {
         ImageTranscodeParam params = new ImageTranscodeParam(format);
         List<Path> outFiles = Transcoder.dcm2image(in, OUT_DIR, params);
 
-        assertTrue(!outFiles.isEmpty());
+        assertFalse(outFiles.isEmpty());
 
         Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         enumMap.put(ImageContentHash.AVERAGE, zeroDiff);

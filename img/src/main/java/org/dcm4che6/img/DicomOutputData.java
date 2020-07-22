@@ -145,10 +145,7 @@ public class DicomOutputData {
         boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U;
         int dcmFlags = signed ? Imgcodecs.DICOM_FLAG_SIGNED : Imgcodecs.DICOM_FLAG_UNSIGNED;
         PhotometricInterpretation pmi = desc.getPhotometricInterpretation();
-        if (img.channels() > 1) {
-            pmi = PhotometricInterpretation.RGB.compress(tsuid);
-        }
-        int epi = getCodecColorSpace(pmi);
+        int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
         int bitAllocated = elemSize * 8;
         int bitCompressed = desc.getBitsCompressed();
         if (bitCompressed > bitAllocated) {
@@ -209,28 +206,11 @@ public class DicomOutputData {
         data.setInt(Tag.PixelRepresentation, VR.US, signed ? 1 : 0);
         if (img.channels() > 1) {
             data.setInt(Tag.PlanarConfiguration, VR.US, 0);
+            pmi = PhotometricInterpretation.RGB.compress(tsuid);
         }
         data.setString(Tag.PhotometricInterpretation, VR.CS, pmi.toString());
 
         return params;
-    }
-
-    private static int getCodecColorSpace(PhotometricInterpretation pi) {
-        if (PhotometricInterpretation.MONOCHROME1 == pi) {
-            return Imgcodecs.EPI_Monochrome1;
-        } else if (PhotometricInterpretation.MONOCHROME2 == pi) {
-            return Imgcodecs.EPI_Monochrome2;
-        } else if (PhotometricInterpretation.RGB == pi) {
-            return Imgcodecs.EPI_RGB;
-        } else if (PhotometricInterpretation.YBR_FULL == pi) {
-            return Imgcodecs.EPI_YBR_Full;
-        } else if (PhotometricInterpretation.YBR_FULL_422 == pi) {
-            return Imgcodecs.EPI_YBR_Full_422;
-        } else if (PhotometricInterpretation.YBR_PARTIAL_422 == pi) {
-            return Imgcodecs.EPI_YBR_Partial_422;
-        } else { // Palette, HSV, ARGB, CMYK
-            return Imgcodecs.EPI_Unknown;
-        }
     }
 
     public static boolean isNativeSyntax(String uid) {

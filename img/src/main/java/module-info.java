@@ -13,4 +13,8 @@ module org.dcm4che.img {
 
     exports org.dcm4che6.img;
     exports org.dcm4che6.img.data;
+    exports org.dcm4che6.img.lut;
+    exports org.dcm4che6.img.op;
+    exports org.dcm4che6.img.stream;
+    exports org.dcm4che6.img.util;
 }

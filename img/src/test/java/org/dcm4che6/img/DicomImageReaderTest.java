@@ -24,13 +24,13 @@ public class DicomImageReaderTest {
     static DicomImageReader reader;
 
     @BeforeAll
-    static void setUp() {
+    public static void setUp() {
         BasicConfigurator.configure();
         reader = (DicomImageReader) ImageIO.getImageReadersByFormatName("DICOM").next();
     }
 
     @AfterAll
-    static void tearDown() {
+    public static void tearDown() {
         if (reader != null)
             reader.dispose();
     }
