@@ -26,7 +26,7 @@ public class DicomJpegWriteParam {
         this.prediction = 1;
         this.pointTransform = 0;
         this.nearLosslessError = 0;
-        this.compressionQuality = 80;
+        this.compressionQuality = 85;
         this.losslessCompression = true;
         this.sourceRegion = null;
         this.compressionRatiofactor = 0;

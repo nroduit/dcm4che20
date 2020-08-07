@@ -2,6 +2,7 @@ package org.dcm4che6.img;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.imageio.ImageReadParam;
@@ -33,6 +35,7 @@ import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.img.stream.ExtendSegmentedInputImageStream;
 import org.dcm4che6.img.stream.ImageDescriptor;
+import org.dcm4che6.img.stream.SeekableInMemoryByteChannel;
 import org.dcm4che6.io.ByteOrder;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -88,7 +91,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         } else if (input instanceof BytesWithImageDescriptor) {
             this.bdis = (BytesWithImageDescriptor) input;
         } else {
-            throw new IllegalArgumentException("Usupported inputStream: " + input.getClass().getName());
+            throw new IllegalArgumentException("Unsupported inputStream: " + input.getClass().getName());
         }
     }
 
@@ -201,35 +204,75 @@ public class DicomImageReader extends ImageReader implements Closeable {
         dispose();
     }
 
-    private boolean ybr2rgb(PhotometricInterpretation pmi, ExtendSegmentedInputImageStream seg) {
-        switch (pmi) {
-            case MONOCHROME1:
-            case MONOCHROME2:
-            case PALETTE_COLOR:
-                return false;
-            default:
-                break;
-        }
-        if (dis != null) {
-         
+    private boolean fileYbr2rgb(PhotometricInterpretation pmi, String tsuid, ExtendSegmentedInputImageStream seg,
+        int frame, DicomImageReadParam param) {
+        Supplier<Boolean> isYbrModel = () -> {
             try (SeekableByteChannel channel = Files.newByteChannel(dis.getPath(),StandardOpenOption.READ)) {
-                channel.position(seg.getSegmentPositions()[0]);
-                JPEGParser parser = new JPEGParser(channel, seg.getSegmentLengths()[0]);
-                // Preserve YBR for JPEG Lossless (1.2.840.10008.1.2.4.57, 1.2.840.10008.1.2.4.70)
+                channel.position(seg.getSegmentPositions()[frame]);
+                JPEGParser parser = new JPEGParser(channel, seg.getSegmentLengths()[frame]);
                 if (!parser.getParams().lossyImageCompression()) {
                     return false;
                 }
-                if (pmi == PhotometricInterpretation.RGB) {
+                if (pmi == PhotometricInterpretation.RGB && !param.getKeepRgbForLossyJpeg().orElse(false)) {
                     // Force JPEG Baseline (1.2.840.10008.1.2.4.50) to YBR_FULL_422 color model when RGB with JFIF
                     // header (error made by some constructors). RGB color model doesn't make sense for lossy jpeg with
                     // JFIF header.
                     return  !"RGB".equals(parser.getParams().colorPhotometricInterpretation());
                 }
             } catch (IOException e) {
-                LOG.error("Cannort read jpeg header", e);
+                LOG.error("Cannot read jpeg header", e);
             }
+            return false;
+        };
+        return ybr2rgb(pmi, tsuid, isYbrModel);
+    }
+
+    private boolean byteYbr2rgb(PhotometricInterpretation pmi, String tsuid, int frame,
+        DicomImageReadParam param) {
+        Supplier<Boolean> isYbrModel = () -> {
+            try {
+                byte[] b = bdis.getBytes(frame).array();
+                SeekableInMemoryByteChannel channel = new SeekableInMemoryByteChannel(b);
+                JPEGParser parser = new JPEGParser(channel, b.length);
+                if (!parser.getParams().lossyImageCompression()) {
+                    return false;
+                }
+                if (pmi == PhotometricInterpretation.RGB && !param.getKeepRgbForLossyJpeg().orElse(false)) {
+                    return !"RGB".equals(parser.getParams().colorPhotometricInterpretation());
+                }
+            } catch (Exception e) {
+                LOG.error("Cannot read jpeg header", e);
+            }
+            return false;
+        };
+        return ybr2rgb(pmi, tsuid, isYbrModel);
+    }
+
+    private static boolean ybr2rgb(PhotometricInterpretation pmi, String tsuid, Supplier<Boolean> isYbrModel) {
+        // Option only for IJG native decoder
+        switch (pmi) {
+            case MONOCHROME1:
+            case MONOCHROME2:
+            case PALETTE_COLOR:
+            case YBR_ICT:
+            case YBR_RCT:
+                return false;
+            default:
+                break;
         }
-        return true;
+
+        switch (tsuid) {
+            case UID.JPEGBaseline1:
+            case UID.JPEGExtended24:
+            case UID.JPEGSpectralSelectionNonHierarchical68Retired:
+            case UID.JPEGFullProgressionNonHierarchical1012Retired:
+                if (pmi == PhotometricInterpretation.RGB) {
+                    return isYbrModel.get();
+                }
+                return true;
+            default:
+                return false;
+        }
     }
 
     public List<PlanarImage> getPlanarImages() throws IOException {
@@ -251,8 +294,12 @@ public class DicomImageReader extends ImageReader implements Closeable {
     public PlanarImage getPlanarImage(int frame, DicomImageReadParam param) throws IOException {
         PlanarImage img = getRawImage(frame, param);
         if (getImageDescriptor().getPhotometricInterpretation() == PhotometricInterpretation.PALETTE_COLOR) {
-            // TODO handle when not file
-            img = DicomImageUtils.getRGBImageFromPaletteColorModel(img, dis.getMetadata().getDicomObject());
+            if(dis == null) {
+                img = DicomImageUtils.getRGBImageFromPaletteColorModel(img, bdis.getPaletteColorLookupTable());
+            }
+            else {
+                img = DicomImageUtils.getRGBImageFromPaletteColorModel(img, dis.getMetadata().getDicomObject());
+            }
         }
         if(param != null && param.getSourceRegion() != null) {
             img = ImageProcessor.crop(img.toMat(), param.getSourceRegion());
@@ -308,7 +355,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         boolean rawData = fragments.isEmpty() || type == TransferSyntaxType.NATIVE || type == TransferSyntaxType.RLE;
         int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_FLAG_SIGNED
             : Imgcodecs.DICOM_FLAG_UNSIGNED;
-        if (!rawData && !TransferSyntaxType.isJpeg2000(tsuid) && ybr2rgb(desc.getPhotometricInterpretation(), seg)) {
+        if (!rawData && fileYbr2rgb(desc.getPhotometricInterpretation(), tsuid, seg, frame,param)) {
             dcmFlags |= Imgcodecs.DICOM_FLAG_YBR;
         }
         boolean bigendian = dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;
@@ -357,7 +404,7 @@ public class DicomImageReader extends ImageReader implements Closeable {
         boolean rawData = type == TransferSyntaxType.NATIVE || type == TransferSyntaxType.RLE;
         int dcmFlags = (type.canEncodeSigned() && desc.isSigned()) ? Imgcodecs.DICOM_FLAG_SIGNED
             : Imgcodecs.DICOM_FLAG_UNSIGNED;
-        if (!rawData && !TransferSyntaxType.isJpeg2000(tsuid) && bdis.forceYbrToRgbConversion()) {
+        if (!rawData && byteYbr2rgb(desc.getPhotometricInterpretation(), tsuid, frame, param)) {
             dcmFlags |= Imgcodecs.DICOM_FLAG_YBR;
         }
         boolean bigendian = dis == null ?  false : dis.getEncoding().byteOrder == ByteOrder.BIG_ENDIAN;

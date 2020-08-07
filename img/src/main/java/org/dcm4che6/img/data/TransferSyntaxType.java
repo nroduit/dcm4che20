@@ -134,6 +134,23 @@ public enum TransferSyntaxType {
         }
     }
 
+    public static boolean isLVideo(String uid) {
+        switch (uid) {
+            case UID.MPEG2:
+            case UID.MPEG2MainProfileHighLevel:
+            case UID.MPEG4AVCH264HighProfileLevel41:
+            case UID.MPEG4AVCH264BDCompatibleHighProfileLevel41:
+            case UID.MPEG4AVCH264HighProfileLevel42For2DVideo:
+            case UID.MPEG4AVCH264HighProfileLevel42For3DVideo:
+            case UID.MPEG4AVCH264StereoHighProfileLevel42:
+            case UID.HEVCH265MainProfileLevel51:
+            case UID.HEVCH265Main10ProfileLevel51:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static boolean isYBRCompression(String uid) {
         switch (uid) {
             case UID.JPEGBaseline1:

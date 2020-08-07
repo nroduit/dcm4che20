@@ -1,5 +1,7 @@
 package org.dcm4che6.img.stream;
 
+import org.dcm4che6.data.DicomObject;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -12,5 +14,5 @@ public interface BytesWithImageDescriptor extends ImageReaderDescriptor {
 
     String getTransferSyntax();
 
-    boolean forceYbrToRgbConversion();
+    DicomObject getPaletteColorLookupTable();
 }

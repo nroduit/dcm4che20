@@ -7,17 +7,15 @@ import org.dcm4che6.img.op.MaskArea;
 import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
 import org.dcm4che6.io.DicomOutputStream;
-import org.opencv.core.*;
+import org.opencv.core.CvType;
+import org.opencv.core.MatOfInt;
 import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weasis.core.util.FileUtil;
-import org.weasis.opencv.data.ImageCV;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
 
-import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -133,10 +131,9 @@ public class Transcoder {
                 if (DicomOutputData.isNativeSyntax(dstTsuid)) {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
-                    int[] jpegWriteParams = imgData.adaptTagsToImage(dataSet, images.get(0),
+                    int[] jpegWriteParams = imgData.adaptTagsToCompressedImage(dataSet, images.get(0),
                         dicomMetaData.getImageDescriptor(), params.getWriteJpegParam());
-                    dos.writeDataSet(dataSet);
-                    imgData.writCompressedImageData(dos, jpegWriteParams);
+                    imgData.writCompressedImageData(dos, dataSet, jpegWriteParams);
                 }
             } catch (Exception e) {
                 LOGGER.error("Transcoding image data", e);
@@ -164,24 +161,10 @@ public class Transcoder {
             }
             if (mask != null) {
                 for (int i = 0; i < images.size(); i++) {
-                    images.set(i, drawShape(images.get(i).toMat(), mask));
+                    images.set(i, MaskArea.drawShape(images.get(i).toMat(), mask));
                 }
             }
         }
-    }
-
-    private static ImageCV drawShape(Mat srcImg, MaskArea maskArea) {
-        if (maskArea != null && !maskArea.getShapeList().isEmpty()) {
-            Color c = maskArea.getColor();
-            ImageCV dstImg = new ImageCV();
-            srcImg.copyTo(dstImg);
-            for (Shape shape :maskArea.getShapeList()) {
-                List<MatOfPoint> pts = ImageProcessor.transformShapeToContour(shape, true);
-                Imgproc.fillPoly(dstImg, pts, new Scalar(c.getBlue(), c.getGreen(), c.getRed()));
-            }
-            return dstImg;
-        }
-        return ImageCV.toImageCV(srcImg);
     }
 
     private static int getCompressionRatio(ImageTranscodeParam params) {

@@ -30,6 +30,7 @@ public class DicomImageReadParam extends ImageReadParam {
     private Boolean inverseLut;
     private Boolean fillOutsideLutRange;
     private Boolean applyWindowLevelToColorImage;
+    private Boolean keepRgbForLossyJpeg;
     private PrDicomObject presentationState;
 
     private int windowIndex;
@@ -176,6 +177,14 @@ public class DicomImageReadParam extends ImageReadParam {
 
     public void setApplyWindowLevelToColorImage(Boolean applyWindowLevelToColorImage) {
         this.applyWindowLevelToColorImage = applyWindowLevelToColorImage;
+    }
+
+    public Optional<Boolean> getKeepRgbForLossyJpeg() {
+        return Optional.ofNullable(keepRgbForLossyJpeg);
+    }
+
+    public void setKeepRgbForLossyJpeg(Boolean keepRgbForLossyJpeg) {
+        this.keepRgbForLossyJpeg = keepRgbForLossyJpeg;
     }
 
     public int getVoiLUTIndex() {

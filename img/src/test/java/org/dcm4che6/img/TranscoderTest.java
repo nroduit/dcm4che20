@@ -1,22 +1,5 @@
 package org.dcm4che6.img;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.*;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
-
 import org.apache.log4j.BasicConfigurator;
 import org.dcm4che6.data.UID;
 import org.dcm4che6.img.Transcoder.Format;
@@ -32,6 +15,23 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.weasis.core.util.FileUtil;
 import org.weasis.opencv.data.PlanarImage;
 import org.weasis.opencv.op.ImageProcessor;
+
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TranscoderTest {
     static final Path IN_DIR = Path.of(TranscoderTest.class.getResource("").getFile());
@@ -110,7 +110,7 @@ public class TranscoderTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { UID.JPEG2000, UID.JPEGBaseline1, UID.JPEGLSLossyNearLossless })
+    @ValueSource(strings = {UID.JPEG2000, UID.JPEGBaseline1, UID.JPEGLSLossyNearLossless})
     public void dcm2dcm_YBR422Raw_Lossy(String tsuid) throws Exception {
         Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         enumMap.put(ImageContentHash.AVERAGE, zeroDiff);
@@ -138,7 +138,7 @@ public class TranscoderTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { UID.JPEG2000LosslessOnly, UID.JPEGLossless, UID.JPEGLSLossless })
+    @ValueSource(strings = {UID.JPEG2000LosslessOnly, UID.JPEGLossless, UID.JPEGLSLossless})
     public void dcm2dcm_YBR422Raw_Lossless(String tsuid) throws Exception {
         Map<ImageContentHash, Consumer<Double>> enumMap = new EnumMap<>(ImageContentHash.class);
         // The image content must be fully preserved with lossless compression
@@ -156,12 +156,12 @@ public class TranscoderTest {
     }
 
     private void compareImageContent(Path in, List<Path> outFiles, Map<ImageContentHash, Consumer<Double>> enumMap)
-        throws Exception {
+            throws Exception {
         List<PlanarImage> imagesIn = readImages(in);
         List<PlanarImage> imagesOut = readImages(outFiles);
 
         assertTrue(imagesIn.size() == imagesOut.size(),
-            "The number of image frames of the input file is different of the output file");
+                "The number of image frames of the input file is different of the output file");
 
         for (int i = 0; i < imagesIn.size(); i++) {
             PlanarImage imgIn = imagesIn.get(i);
@@ -187,7 +187,7 @@ public class TranscoderTest {
             return reader.getPlanarImages(null);
         } else {
             return files.stream().map(p -> ImageProcessor.readImageWithCvException(p.toFile()))
-                .collect(Collectors.toList());
+                    .collect(Collectors.toList());
         }
     }
 
@@ -201,7 +201,7 @@ public class TranscoderTest {
     }
 
     private Path transcodeDicom(String ifname, DicomTranscodeParam params, Map<ImageContentHash, Consumer<Double>> enumMap)
-        throws Exception {
+            throws Exception {
         Path in = Path.of(IN_DIR.toString(), ifname);
         Path out = Path.of(OUT_DIR.toString(), params.getOutputTsuid());
         Files.createDirectories(out);
@@ -213,5 +213,4 @@ public class TranscoderTest {
         }
         return out;
     }
-
 }
