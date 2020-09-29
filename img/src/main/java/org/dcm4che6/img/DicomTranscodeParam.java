@@ -3,7 +3,6 @@ package org.dcm4che6.img;
 import org.dcm4che6.img.op.MaskArea;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class DicomTranscodeParam {
@@ -49,6 +48,14 @@ public class DicomTranscodeParam {
 
     public void addMaskMap(Map<? extends String, ? extends MaskArea> maskMap){
         this.maskMap.putAll(maskMap);
+    }
+
+    public MaskArea getMask(String key) {
+        MaskArea mask = maskMap.get(key);
+        if (mask == null) {
+            mask = maskMap.get("*");
+        }
+        return mask;
     }
 
     public void addMask(String stationName, MaskArea maskArea){

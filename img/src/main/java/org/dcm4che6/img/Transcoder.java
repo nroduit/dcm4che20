@@ -155,10 +155,7 @@ public class Transcoder {
 
     private static void applyMaskAreas(List<PlanarImage> images, DicomTranscodeParam params, String key) {
         if (!params.getMaskMap().isEmpty()) {
-            MaskArea mask = params.getMaskMap().get(key);
-            if (mask == null) {
-                mask = params.getMaskMap().get("*");
-            }
+            MaskArea mask = params.getMask(key);
             if (mask != null) {
                 for (int i = 0; i < images.size(); i++) {
                     images.set(i, MaskArea.drawShape(images.get(i).toMat(), mask));

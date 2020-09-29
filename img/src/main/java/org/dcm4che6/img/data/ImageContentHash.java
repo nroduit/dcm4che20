@@ -9,6 +9,11 @@ import org.opencv.img_hash.MarrHildrethHash;
 import org.opencv.img_hash.PHash;
 import org.opencv.img_hash.RadialVarianceHash;
 
+/**
+ * Algorithms to compare image content
+ *
+ * @see <a href="http://qtandopencv.blogspot.com/2016/06/introduction-to-image-hash-module-of.html">Hash for pixel data</a>
+ */
 public enum ImageContentHash {
     AVERAGE() {
         @Override

@@ -8,7 +8,6 @@
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>dcm4che-img</artifactId>
-	<packaging>bundle</packaging>
 	<properties>
 		<!-- Skip test by default except for some architecture related to the native library -->
 		<skipImgTests>false</skipImgTests>
@@ -151,25 +150,6 @@
 
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.felix</groupId>
-				<artifactId>maven-bundle-plugin</artifactId>
-				<version>4.2.1</version>
-				<extensions>true</extensions>
-				<configuration>
-					<obrRepository>NONE</obrRepository>
-					<instructions>
-						<Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-						<Bundle-Version>${project.version}</Bundle-Version>
-						<Bundle-RequiredExecutionEnvironment>JavaSE-${maven.compiler.release}</Bundle-RequiredExecutionEnvironment>
-						<_removeheaders>
-							Bnd-LastModified,Include-Resource,Private-Package,Tool,Built-By,Created-By
-						</_removeheaders>
-						<SPI-Consumer>*</SPI-Consumer>
-						<SPI-Provider>javax.imageio.spi.ImageReaderSpi</SPI-Provider>
-					</instructions>
-				</configuration>
-			</plugin>
 			<plugin>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<executions>
