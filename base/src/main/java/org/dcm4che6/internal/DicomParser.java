@@ -238,7 +238,7 @@ public class DicomParser implements DicomInputHandler {
         try {
             VR.of(cache.vrcode(pos));
             return true;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
             return false;
         }
     }
