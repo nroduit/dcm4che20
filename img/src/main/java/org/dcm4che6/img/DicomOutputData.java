@@ -218,6 +218,11 @@ public class DicomOutputData {
             bitCompressedForEncoder = bitCompressed;
         }
 
+        // Specific case not well supported by jpeg and jpeg-ls encoder that reduce the stream to 8-bit
+        if(ts != TransferSyntaxType.JPEG_2000 && bitCompressed == 8 && bitAllocated == 16){
+            bitCompressedForEncoder = 12;
+        }
+
         int[] params = new int[15];
         params[Imgcodecs.DICOM_PARAM_IMREAD] = Imgcodecs.IMREAD_UNCHANGED; // Image flags
         params[Imgcodecs.DICOM_PARAM_DCM_IMREAD] = dcmFlags; // DICOM flags
