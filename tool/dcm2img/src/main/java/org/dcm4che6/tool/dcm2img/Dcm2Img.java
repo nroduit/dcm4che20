@@ -21,37 +21,39 @@ import java.util.concurrent.Callable;
         mixinStandardHelpOptions = true,
         versionProvider = Dcm2Img.ModuleVersionProvider.class,
         descriptionHeading = "%n",
-        description = "The dcm2img utility .",
+        description = "The dcm2img utility allows converting a DICOM file into a standard image formats (JPEG, PNG, TIF, JP2, PNM, BMP or HDR).",
         parameterListHeading = "%nParameters:%n",
         optionListHeading = "%nOptions:%n",
         showDefaultValues = true,
         footerHeading = "%nExample:%n",
-        footer = {"$ dcm2img -f TIF image.dcm outputPath",
-                "Write a tif image into the outputPath by extracting the pixel data from image.dcm. Without the '-p' " +
+        footer = {"$ dcm2img -f TIF -o \"/tmp/dcm/\" \"home/user/image.dcm\"",
+                "Write a tif image into /tmp/dcm/ by extracting the pixel data from image.dcm. Without the '--preserve' " +
                         "option, the default Window/Level is applied to obtain a 8 bit/pixel image."}
 )
 public class Dcm2Img implements Callable<Integer> {
 
     @CommandLine.Parameters(
             description = "Path of the DICOM input file.",
+            arity = "1",
             index = "0")
     Path dcmfile;
 
-    @CommandLine.Parameters(
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            required = true,
             description = "Path of the output image. if the path is a directory then the filename is taken from the source path.",
-            index = "1")
+            arity = "1")
     Path outDir;
 
-    @CommandLine.Parameters(
-            description = "Path of the DICOM Presentation State file",
-            arity = "0..1",
-            index = "2")
+    @CommandLine.Option(
+            names = {"-p", "--input-dcm-pr"},
+            description = "Path of the DICOM Presentation State file to apply")
     Path prfile;
 
-    @CommandLine.Option(names = "-f", description = "Output image format: ${COMPLETION-CANDIDATES}")
+    @CommandLine.Option(names = {"-f", "--format"}, description = "Output image format: ${COMPLETION-CANDIDATES}")
     Transcoder.Format format = Transcoder.Format.JPEG;
 
-    @CommandLine.Option(names = "-q", description = "JPEG compression quality between 1 to 100 (100 is the best lossy quality).")
+    @CommandLine.Option(names = {"-q", "--quality"}, description = "JPEG compression quality between 1 to 100 (100 is the best lossy quality).")
     Integer jpegCompressionQuality = 80;
 
     @CommandLine.Option(names = "--overlay-color", description = "The color defined in Hex Code (RRGGBB or AARRGGBB with " +
@@ -70,8 +72,10 @@ public class Dcm2Img implements Callable<Integer> {
     @CommandLine.Option(names = "--win-level-index", description = "Select the embedded Window/Level where the index defined the position.")
     Integer winIndex = 0;
 
-    @CommandLine.Option(names = "-p", description = "It preserves the raw data when the pixel depth is more than 8 bit. " +
-            "The default value applies the W/L and is FALSE, the output image will be always a 8-bit per sample image.")
+    @CommandLine.Option(names = "--preserve", negatable = true, description = "It preserves the raw data when the pixel depth is more " +
+            "than 8 bit. JPEG and BMP don't support more than 8-bit; PNG, JP2 and PNM support unsigned 16-bit; " +
+            "TIF supports unsigned 16-bit, 32-bit float and 64-bit double; HDR supports 64-bit double. " +
+            "When FALSE, the default value applies the W/L, the output image will be always a 8-bit per sample image.")
     boolean preservePixelDepth;
 
     public static void main(String[] args) {

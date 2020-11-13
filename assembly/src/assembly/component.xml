@@ -42,6 +42,7 @@
         <include>org.dcm4che:dcm4che-json</include>
         <include>org.dcm4che:dcm4che-net</include>
         <include>org.dcm4che:dcm4che-xml</include>
+        <include>org.dcm4che.tool:dcm4che-tool-dcm2dcm</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcm2img</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcm2json</include>
         <include>org.dcm4che.tool:dcm4che-tool-dcm2xml</include>
