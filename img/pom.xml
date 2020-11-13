@@ -82,23 +82,6 @@
 			</properties>
 		</profile>
 		<profile>
-			<id>unix-32</id>
-			<activation>
-				<os>
-					<family>unix</family>
-					<name>Linux</name>
-					<arch>i386</arch>
-				</os>
-			</activation>
-			<properties>
-				<skipTests>false</skipTests>
-				<os-name>linux</os-name>
-				<cpu-name>x86</cpu-name>
-				<lib-file-name>libopencv_java</lib-file-name>
-				<lib-file-ext>so</lib-file-ext>
-			</properties>
-		</profile>
-		<profile>
 			<id>windows</id>
 			<activation>
 				<os>
@@ -115,7 +98,7 @@
 			</properties>
 		</profile>
 		<profile>
-			<id>windows32</id>
+			<id>windows2</id>
 			<activation>
 				<os>
 					<family>windows</family>
@@ -126,22 +109,6 @@
 				<skipTests>false</skipTests>
 				<os-name>windows</os-name>
 				<cpu-name>x86-64</cpu-name>
-				<lib-file-name>opencv_java</lib-file-name>
-				<lib-file-ext>dll</lib-file-ext>
-			</properties>
-		</profile>
-		<profile>
-			<id>windows-3</id>
-			<activation>
-				<os>
-					<family>windows</family>
-					<arch>x86</arch>
-				</os>
-			</activation>
-			<properties>
-				<skipTests>false</skipTests>
-				<os-name>windows</os-name>
-				<cpu-name>x86</cpu-name>
 				<lib-file-name>opencv_java</lib-file-name>
 				<lib-file-ext>dll</lib-file-ext>
 			</properties>

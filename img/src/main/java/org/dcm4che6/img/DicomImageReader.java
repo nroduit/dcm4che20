@@ -376,9 +376,10 @@ public class DicomImageReader extends ImageReader implements Closeable {
             lengths = new MatOfDouble(Arrays.stream(seg.getSegmentLengths()).asDoubleStream().toArray());
             if (rawData) {
                 int bits = bitsStored <= 8 && desc.getBitsAllocated() > 8 ? 9 : bitsStored; // Fix #94
+                int byteNumber = pixdata.get().vr().getBinaryTypeByteNumber();
                 MatOfInt dicomparams = new MatOfInt(Imgcodecs.IMREAD_UNCHANGED, dcmFlags, desc.getColumns(),
                     desc.getRows(), Imgcodecs.DICOM_CP_UNKNOWN, desc.getSamples(), bits,
-                    desc.isBanded() ? Imgcodecs.ILV_NONE : Imgcodecs.ILV_SAMPLE);
+                    desc.isBanded() ? Imgcodecs.ILV_NONE : Imgcodecs.ILV_SAMPLE, byteNumber);
                 return ImageCV.toImageCV(Imgcodecs.dicomRawFileRead(seg.getPath().toString(), positions, lengths,
                     dicomparams, desc.getPhotometricInterpretation().name()));
             }
