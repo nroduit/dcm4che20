@@ -97,6 +97,10 @@ public enum BinaryVR implements VRType {
         this.dicomInputToString = dicomInputToString;
     }
 
+    public int getByteNumber(){
+        return bytes;
+    }
+
     @Override
     public ToggleByteOrder toggleByteOrder() {
         return toggleByteOrder;

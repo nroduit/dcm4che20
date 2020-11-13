@@ -58,6 +58,13 @@ public enum VR {
         this.jsonType = jsonType;
     }
 
+    public int getBinaryTypeByteNumber() {
+        if( type instanceof BinaryVR) {
+            return ((BinaryVR) type).getByteNumber();
+        }
+        return -1;
+    }
+
     public static VR of(int code) {
         switch (code) {
             case 0x4145: return AE;
