@@ -161,7 +161,7 @@ public class DicomOutputData {
     public static void adaptTagsToRawImage(DicomObject data, PlanarImage img, ImageDescriptor desc) {
         int cvType = img.type();
         int channels = CvType.channels(cvType);
-        int signed = CvType.depth(cvType) == CvType.CV_16S ? 1 : 0;
+        int signed = CvType.depth(cvType) == CvType.CV_16S || desc.isSigned() ? 1 : 0;
         data.setInt(Tag.Columns, VR.US, img.width());
         data.setInt(Tag.Rows, VR.US, img.height());
         data.setInt(Tag.SamplesPerPixel, VR.US, channels);
