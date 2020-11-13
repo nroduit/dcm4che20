@@ -124,6 +124,17 @@ public class Transcoder {
             List<PlanarImage> images = reader.getPlanarImages(params.getReadParam());
             applyMaskAreas(images, params, stationName);
             String dstTsuid = params.getOutputTsuid();
+            DicomJpegWriteParam writeParams = params.getWriteJpegParam();
+            int type = CvType.depth(images.get(0).type());
+            String convertibleSyntax = DicomOutputData.adaptSuitableSyntax(dicomMetaData.getImageDescriptor().getBitsStored(), type, dstTsuid);
+            if(!dstTsuid.equals(convertibleSyntax)) {
+                dstTsuid = convertibleSyntax;
+                if(!DicomOutputData.isNativeSyntax(dstTsuid)) {
+                    writeParams = DicomJpegWriteParam.buildDicomImageWriteParam(dstTsuid);
+                }
+                LOGGER.warn("Transcoding into {} is not possible, decompressing {}", dstTsuid, srcPath);
+            }
+
             DicomOutputData imgData = new DicomOutputData(images, dicomMetaData.getImageDescriptor(), dstTsuid);
             try (DicomOutputStream dos = new DicomOutputStream(Files.newOutputStream(outPath))) {
                 dos.writeFileMetaInformation(dicomMetaData.getDicomObject().createFileMetaInformation(dstTsuid));
@@ -132,10 +143,11 @@ public class Transcoder {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
                     int[] jpegWriteParams = imgData.adaptTagsToCompressedImage(dataSet, images.get(0),
-                        dicomMetaData.getImageDescriptor(), params.getWriteJpegParam());
+                        dicomMetaData.getImageDescriptor(), writeParams);
                     imgData.writCompressedImageData(dos, dataSet, jpegWriteParams);
                 }
             } catch (Exception e) {
+                FileUtil.delete(outPath);
                 LOGGER.error("Transcoding image data", e);
             }
         }

@@ -4,6 +4,7 @@ import org.dcm4che6.data.UID;
 import org.dcm4che6.img.DicomImageReadParam;
 import org.dcm4che6.img.DicomTranscodeParam;
 import org.dcm4che6.img.Transcoder;
+import org.dcm4che6.img.data.TransferSyntaxType;
 import picocli.CommandLine;
 
 import java.io.IOException;
@@ -70,6 +71,10 @@ public class Dcm2Dcm implements Callable<Integer> {
     @CommandLine.Option(names = "-q", description = "Lossy JPEG compression quality between 1 to 100 (100 is the best lossy quality).")
     Integer jpegCompressionQuality = 80;
 
+    @CommandLine.Option(names = "--rgb-lossy", negatable = true, description = "Keep RGB model with JPEG lossy." +
+            "If FALSE the reader force using YBR color model")
+    boolean keepRgb = false;
+
     public static void main(String[] args) {
         CommandLine cl = new CommandLine(new Dcm2Dcm());
         cl.execute(args);
@@ -78,8 +83,9 @@ public class Dcm2Dcm implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         DicomImageReadParam readParam = new DicomImageReadParam();
+        readParam.setKeepRgbForLossyJpeg(keepRgb);
         DicomTranscodeParam params = new DicomTranscodeParam(readParam, syntax.uid);
-        if (params.getWriteJpegParam() != null) {
+        if (params.getWriteJpegParam() != null && TransferSyntaxType.isLossyCompression(syntax.uid)) {
             params.getWriteJpegParam().setCompressionQuality(jpegCompressionQuality);
         }
 

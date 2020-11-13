@@ -53,6 +53,10 @@ public class Dcm2Img implements Callable<Integer> {
     @CommandLine.Option(names = {"-f", "--format"}, description = "Output image format: ${COMPLETION-CANDIDATES}")
     Transcoder.Format format = Transcoder.Format.JPEG;
 
+    @CommandLine.Option(names = "--rgb-lossy", negatable = true, description = "Keep RGB model with JPEG lossy. " +
+            "If FALSE the reader force using YBR color model")
+    boolean keepRgb = false;
+
     @CommandLine.Option(names = {"-q", "--quality"}, description = "JPEG compression quality between 1 to 100 (100 is the best lossy quality).")
     Integer jpegCompressionQuality = 80;
 
@@ -87,6 +91,7 @@ public class Dcm2Img implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         DicomImageReadParam readParam = new DicomImageReadParam();
+        readParam.setKeepRgbForLossyJpeg(keepRgb);
         readParam.setInverseLut(inverseLut);
         readParam.setApplyPixelPadding(!noPixelPadding);
         readParam.setOverlayColor(overlayColor);

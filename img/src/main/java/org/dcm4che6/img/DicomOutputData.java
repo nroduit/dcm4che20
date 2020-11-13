@@ -136,22 +136,54 @@ public class DicomOutputData {
             dos.writeHeader(Tag.PixelData, VR.OB, length);
 
             if (type <= CvType.CV_8S) {
-                byte[] bSrcData = new byte[imgSize * channels];
+                byte[] srcData = new byte[imgSize * channels];
                 for (PlanarImage image : images) {
                     img = DicomImageUtils.bgr2rgb(image);
-                    img.get(0, 0, bSrcData);
-                    dos.write(bSrcData);
+                    img.get(0, 0, srcData);
+                    dos.write(srcData);
                 }
             } else if (type <= CvType.CV_16S) {
-                short[] bSrcData = new short[imgSize * channels];
-                ByteBuffer bb = ByteBuffer.allocate(bSrcData.length * 2);
+                short[] srcData = new short[imgSize * channels];
+                ByteBuffer bb = ByteBuffer.allocate(srcData.length * 2);
                 bb.order(ByteOrder.LITTLE_ENDIAN);
                 for (PlanarImage image : images) {
                     img = DicomImageUtils.bgr2rgb(image);
-                    img.get(0, 0, bSrcData);
-                    bb.asShortBuffer().put(bSrcData);
+                    img.get(0, 0, srcData);
+                    bb.asShortBuffer().put(srcData);
                     dos.write(bb.array());
                 }
+            } else if (type == CvType.CV_32S) {
+                int[] srcData = new int[imgSize * channels];
+                ByteBuffer bb = ByteBuffer.allocate(srcData.length * 4);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                for (PlanarImage image : images) {
+                    img = DicomImageUtils.bgr2rgb(image);
+                    img.get(0, 0, srcData);
+                    bb.asIntBuffer().put(srcData);
+                    dos.write(bb.array());
+                }
+            } else if (type == CvType.CV_32F) {
+                float[] srcData = new float[imgSize * channels];
+                ByteBuffer bb = ByteBuffer.allocate(srcData.length * 4);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                for (PlanarImage image : images) {
+                    img = DicomImageUtils.bgr2rgb(image);
+                    img.get(0, 0, srcData);
+                    bb.asFloatBuffer().put(srcData);
+                    dos.write(bb.array());
+                }
+            } else if (type == CvType.CV_64F) {
+                double[] srcData = new double[imgSize * channels];
+                ByteBuffer bb = ByteBuffer.allocate(srcData.length * 8);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                for (PlanarImage image : images) {
+                    img = DicomImageUtils.bgr2rgb(image);
+                    img.get(0, 0, srcData);
+                    bb.asDoubleBuffer().put(srcData);
+                    dos.write(bb.array());
+                }
+            } else {
+                throw new IllegalStateException("Cannot write this unknown image type");
             }
         } catch (Exception e) {
             LOGGER.error("Writing raw pixel data", e);
@@ -183,7 +215,7 @@ public class DicomOutputData {
         int elemSize = (int) img.elemSize1();
         int channels = CvType.channels(cvType);
         int depth = CvType.depth(cvType);
-        boolean signed = depth != CvType.CV_8U && depth != CvType.CV_16U;
+        boolean signed = depth != CvType.CV_8U && (depth != CvType.CV_16U || desc.isSigned());
         int dcmFlags = signed ? Imgcodecs.DICOM_FLAG_SIGNED : Imgcodecs.DICOM_FLAG_UNSIGNED;
         PhotometricInterpretation pmi = desc.getPhotometricInterpretation();
         int epi = channels == 1 ? Imgcodecs.EPI_Monochrome2 : Imgcodecs.EPI_RGB;
@@ -209,17 +241,22 @@ public class DicomOutputData {
         } else {
             // JPEG encoder
             if (bitCompressed <= 8) {
-                bitCompressed = 8;
+                bitCompressedForEncoder = bitCompressed = 8;
             } else if (bitCompressed <= 12) {
-                bitCompressed = 12;
+                if (signed && param.getPrediction() > 1) {
+                    LOGGER.warn("Force JPEGLosslessNonHierarchical14 compression to 16-bit with signed data.");
+                    bitCompressed = 12;
+                    bitCompressedForEncoder = 16;
+                } else {
+                    bitCompressedForEncoder = bitCompressed = 12;
+                }
             } else {
-                bitCompressed = 16;
+                bitCompressedForEncoder = bitCompressed = 16;
             }
-            bitCompressedForEncoder = bitCompressed;
         }
 
         // Specific case not well supported by jpeg and jpeg-ls encoder that reduce the stream to 8-bit
-        if(ts != TransferSyntaxType.JPEG_2000 && bitCompressed == 8 && bitAllocated == 16){
+        if (ts != TransferSyntaxType.JPEG_2000 && bitCompressed == 8 && bitAllocated == 16) {
             bitCompressedForEncoder = 12;
         }
 
@@ -254,6 +291,32 @@ public class DicomOutputData {
         data.setString(Tag.PhotometricInterpretation, VR.CS, pmi.toString());
         return params;
     }
+
+
+    public static String adaptSuitableSyntax(int bitStored, int type, String dstTsuid) {
+        switch (dstTsuid) {
+            case UID.ImplicitVRLittleEndian:
+            case UID.ExplicitVRLittleEndian:
+                return UID.ExplicitVRLittleEndian;
+            case UID.JPEGBaseline1:
+                return type <= CvType.CV_8S ? dstTsuid : type <= CvType.CV_16S ? UID.JPEGLossless : UID.ExplicitVRLittleEndian;
+            case UID.JPEGExtended24:
+            case UID.JPEGSpectralSelectionNonHierarchical68Retired:
+            case UID.JPEGFullProgressionNonHierarchical1012Retired:
+                return type <= CvType.CV_16U && bitStored <= 12 ? dstTsuid :
+                        type <= CvType.CV_16S ? UID.JPEGLossless : UID.ExplicitVRLittleEndian;
+            case UID.JPEGLosslessNonHierarchical14:
+            case UID.JPEGLossless:
+            case UID.JPEGLSLossless:
+            case UID.JPEGLSLossyNearLossless:
+            case UID.JPEG2000LosslessOnly:
+            case UID.JPEG2000:
+                return type <= CvType.CV_16S ? dstTsuid : UID.ExplicitVRLittleEndian;
+            default:
+                return dstTsuid;
+        }
+    }
+
 
     public static boolean isNativeSyntax(String uid) {
         switch (uid) {

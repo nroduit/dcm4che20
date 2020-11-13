@@ -20,9 +20,11 @@ public class DicomJpegWriteParam {
     private boolean losslessCompression;
     private Rectangle sourceRegion;
     private int compressionRatiofactor;
+    private final String transferSyntaxUid;
 
-    DicomJpegWriteParam(TransferSyntaxType type) {
+    DicomJpegWriteParam(TransferSyntaxType type, String transferSyntaxUid) {
         this.type = type;
+        this.transferSyntaxUid = transferSyntaxUid;
         this.prediction = 1;
         this.pointTransform = 0;
         this.nearLosslessError = 0;
@@ -30,6 +32,10 @@ public class DicomJpegWriteParam {
         this.losslessCompression = true;
         this.sourceRegion = null;
         this.compressionRatiofactor = 0;
+    }
+
+    public String getTransferSyntaxUid() {
+        return transferSyntaxUid;
     }
 
     public int getPrediction() {
@@ -136,10 +142,11 @@ public class DicomJpegWriteParam {
             case MPEG:
                 throw new IllegalStateException(tsuid + " is not supported for compression!");
         }
-        DicomJpegWriteParam param = new DicomJpegWriteParam(type);
+        DicomJpegWriteParam param = new DicomJpegWriteParam(type, tsuid);
         param.losslessCompression = !TransferSyntaxType.isLossyCompression(tsuid);
         param.setNearLosslessError(param.losslessCompression ? 0 : 2);
         param.setCompressionRatiofactor(param.losslessCompression ? 0 : 10);
+        param.setCompressionQuality(param.losslessCompression ? 0 : param.getCompressionQuality());
         if (type == TransferSyntaxType.JPEG_LOSSLESS) {
             param.setPointTransform(0);
             if (UID.JPEGLosslessNonHierarchical14.equals(tsuid)) {
