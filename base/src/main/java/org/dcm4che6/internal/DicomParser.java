@@ -461,7 +461,7 @@ public class DicomParser implements DicomInputHandler {
         if (tag != delimitationItemTag)
             return false;
 
-        if (valueLength != 0)
+        if (valueLength > 0)
             throw new DicomParseException();
 
         return true;
