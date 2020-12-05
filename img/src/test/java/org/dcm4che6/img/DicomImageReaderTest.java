@@ -3,7 +3,9 @@ package org.dcm4che6.img;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -20,11 +22,12 @@ import org.weasis.opencv.data.PlanarImage;
  *
  */
 public class DicomImageReaderTest {
-    static final Path IN_DIR = Path.of(DicomImageReaderTest.class.getResource("").getFile());
+    static Path IN_DIR;
     static DicomImageReader reader;
 
     @BeforeAll
-    public static void setUp() {
+    public static void setUp() throws URISyntaxException {
+        IN_DIR = Paths.get(DicomImageReaderTest.class.getResource("").toURI());
         BasicConfigurator.configure();
         reader = (DicomImageReader) ImageIO.getImageReadersByFormatName("DICOM").next();
     }

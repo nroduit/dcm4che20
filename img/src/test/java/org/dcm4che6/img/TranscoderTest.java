@@ -22,6 +22,7 @@ import java.awt.Dimension;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -34,16 +35,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TranscoderTest {
-    static final Path IN_DIR = Path.of(TranscoderTest.class.getResource("").getFile());
+    static Path IN_DIR;
     static final Path OUT_DIR = Path.of("target/test-out/");
 
     private static DicomImageReader reader;
 
-    private final Consumer<Double> zeroDiff = val -> assertTrue(val == 0.0, "The hash result of the image input is not exactly the same as the output image");
+    private final Consumer<Double> zeroDiff = val -> assertEquals(val, 0.0, "The hash result of the image input is not exactly the same as the output image");
     private final Consumer<Double> hasDiff = val -> assertTrue(val != 0.0, "The hash result of the image input is exactly the same as the output image");
 
     @BeforeAll
     public static void setUpBeforeClass() throws Exception {
+        IN_DIR = Paths.get(TranscoderTest.class.getResource("").toURI());
         BasicConfigurator.configure();
         FileUtil.delete(OUT_DIR);
         Files.createDirectories(OUT_DIR);

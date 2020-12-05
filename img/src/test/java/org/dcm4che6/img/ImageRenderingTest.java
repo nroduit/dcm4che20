@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Polygon;
 import java.awt.Shape;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
@@ -21,7 +22,7 @@ public class ImageRenderingTest {
 
     @Test
     public void getModalityLutImage_Statistics() throws Exception {
-        Path in = Path.of(TranscoderTest.IN_DIR.toString(), "mono2-CT-16bit.dcm");
+        Path in = Paths.get(DicomImageReaderTest.class.getResource("mono2-CT-16bit.dcm").toURI());
         DicomImageReadParam readParam = new DicomImageReadParam();
         Polygon polygon = new Polygon();
         polygon.addPoint(150, 200);
