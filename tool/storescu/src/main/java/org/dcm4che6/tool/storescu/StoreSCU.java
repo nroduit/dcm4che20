@@ -69,13 +69,17 @@ public class StoreSCU implements Callable<Integer> {
             index = "2..*")
     List<Path> file;
 
-    @CommandLine.Option(names = "--calling", paramLabel = "aetitle",
+    @CommandLine.Option(names = "--calling", paramLabel = "<aetitle>",
             description = "set my calling AE title")
     String calling = "STORESCU";
 
-    @CommandLine.Option(names = "--called", paramLabel = "aetitle",
+    @CommandLine.Option(names = "--called", paramLabel = "<aetitle>",
             description = "set called AE title of peer")
     String called = "STORESCP";
+
+    @CommandLine.Option(names = "--max-ops-invoked", paramLabel = "<no>",
+            description = "maximum number of outstanding operations invoked asynchronously, 0 = unlimited")
+    int maxOpsInvoked;
 
     private final List<FileInfo> fileInfos = new ArrayList<>();
 
@@ -87,24 +91,37 @@ public class StoreSCU implements Callable<Integer> {
     public Integer call() throws Exception {
         for (Path path : file) {
             try (Stream<Path> walk = Files.walk(path)) {
-                walk.forEach(this::scanFile);
+                walk.filter(file -> Files.isRegularFile(file)).forEach(this::scanFile);
             }
         }
         DicomServiceRegistry serviceRegistry = new DicomServiceRegistry();
         AAssociate.RQ rq = new AAssociate.RQ();
         rq.setCallingAETitle(calling);
         rq.setCalledAETitle(called);
+        if (maxOpsInvoked != 1) {
+            rq.setAsyncOpsWindow(maxOpsInvoked, 1);
+        }
         fileInfos.forEach(info -> rq.findOrAddPresentationContext(info.sopClassUID, info.transferSyntax));
         TCPConnector<Association> inst = new TCPConnector<>(
                 (connector, role) -> new Association(connector, role, serviceRegistry));
         CompletableFuture<Void> task = CompletableFuture.runAsync(inst);
-        Association as = inst.connect(new Connection(), new Connection().setHostname(peer).setPort(port))
-                .thenCompose(as1 -> as1.open(rq))
-                .join();
+        long t1 = System.currentTimeMillis();
+        Association as = inst.connect(new Connection(), new Connection().setHostname(peer).setPort(port)).join();
+        long t2 = System.currentTimeMillis();
+        System.out.format("Open TCP connection in %d ms%n", t2 - t1);
+        as.open(rq).join();
+        long t3 = System.currentTimeMillis();
+        System.out.format("Open DICOM association in %d ms%n", t3 - t2);
+        long totLength = 0;
         for (FileInfo fileInfo : fileInfos) {
             as.cstore(fileInfo.sopClassUID, fileInfo.sopInstanceUID, fileInfo, fileInfo.transferSyntax);
+            totLength += fileInfo.length;
         }
-        as.release();
+        as.release().join();
+        long t4 = System.currentTimeMillis();
+        long dt = t4 - t3;
+        System.out.format("Send %d objects (%f MB) in %d ms (%f MB/s)%n",
+                fileInfos.size(), totLength / 1000000.f, dt, totLength / (dt * 1000.f));
         as.onClose().join();
         task.cancel(true);
         return 0;
@@ -114,14 +131,15 @@ public class StoreSCU implements Callable<Integer> {
         try (DicomInputStream dis = new DicomInputStream(Files.newInputStream(path))) {
             FileInfo fileInfo = new FileInfo();
             fileInfo.path = path;
+            fileInfo.length = Files.size(path);
             DicomObject fmi = dis.readFileMetaInformation();
             if (fmi != null) {
                 fileInfo.sopClassUID = fmi.getStringOrElseThrow(Tag.MediaStorageSOPClassUID);
                 fileInfo.sopInstanceUID = fmi.getStringOrElseThrow(Tag.MediaStorageSOPInstanceUID);
                 fileInfo.transferSyntax = fmi.getStringOrElseThrow(Tag.TransferSyntaxUID);
                 fileInfo.position = dis.getStreamPosition();
+                fileInfo.length -= fileInfo.position;
             } else {
-                fileInfo.transferSyntax = dis.getEncoding().transferSyntaxUID;
                 dis.withInputHandler(fileInfo).readDataSet();
             }
             fileInfos.add(fileInfo);
@@ -136,6 +154,7 @@ public class StoreSCU implements Callable<Integer> {
         String sopInstanceUID;
         String transferSyntax;
         long position;
+        long length;
 
         @Override
         public void writeTo(OutputStream out, String tsuid) throws IOException {
@@ -150,6 +169,7 @@ public class StoreSCU implements Callable<Integer> {
             switch (dcmElm.tag()) {
                 case Tag.SOPInstanceUID:
                     sopInstanceUID = dcmElm.stringValue(0).get();
+                    transferSyntax = dis.getEncoding().transferSyntaxUID;
                     return false;
                 case Tag.SOPClassUID:
                     sopClassUID = dcmElm.stringValue(0).get();

@@ -10,12 +10,14 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.util.Date;
+import java.util.Optional;
 
 /**
  * @author Gunter Zeilinger (gunterze@protonmail.com)
  * @since Jun 2019
  */
 public class MP4Parser implements CompressedPixelParser {
+    private static final int FileBoxType = 0x66747970; // ftyp;
     private static final int MovieBoxType = 0x6d6f6f76; // moov;
     private static final int TrackBoxType = 0x7472616b; // trak
     private static final int MediaBoxType = 0x6d646961; // mdia
@@ -30,6 +32,7 @@ public class MP4Parser implements CompressedPixelParser {
     private static final int SampleSizeBoxType = 0x7374737a; // stsz
 
     private final ByteBuffer buf = ByteBuffer.allocate(8);
+    private MP4FileType mp4FileType;
     private Date creationTime;
     private Date modificationTime;
     private int timescale;
@@ -44,7 +47,19 @@ public class MP4Parser implements CompressedPixelParser {
     private int level_idc;
 
     public MP4Parser(SeekableByteChannel channel) throws IOException {
-        parseMovieBox(channel, findBox(channel, channel.size() - channel.position(), MovieBoxType));
+        long position = channel.position();
+        Box box = nextBox(channel, channel.size() - position);
+        if (box.type == FileBoxType) {
+            mp4FileType = new MP4FileType(readInt(channel), readInt(channel), readInts(channel, box.end));
+        } else {
+            channel.position(position);
+        }
+        parseMovieBox(channel, findBox(channel, channel.size(), MovieBoxType));
+    }
+
+    @Override
+    public Optional<MP4FileType> getMP4FileType() {
+        return Optional.ofNullable(mp4FileType);
     }
 
     public Date getCreationTime() {
@@ -130,27 +145,21 @@ public class MP4Parser implements CompressedPixelParser {
     }
 
     private Box nextBox(SeekableByteChannel channel, long remaining) throws IOException {
+        long pos = channel.position();
         long type = readLong(channel);
         int size = (int) (type >> 32);
-        return size == 0
-                ? new Box((int) type, remaining - 8)
-                : size == 1
-                ? new Box((int) type, readLong(channel) - 16)
-                : new Box((int) type, size - 8);
+        return new Box((int) type, pos + (size == 0 ? remaining : size == 1 ? readLong(channel) : size));
     }
 
-    private Box findBox(SeekableByteChannel channel, long end, int... types)
-            throws IOException {
+    private Box findBox(SeekableByteChannel channel, long end, int type) throws IOException {
         long remaining;
         while ((remaining = end - channel.position()) > 0) {
             Box box = nextBox(channel, remaining);
-            for (int type : types) {
-                if (box.type == type)
-                    return box;
-            }
-            skip(channel, box.contentSize);
+            if (box.type == type)
+                return box;
+            channel.position(box.end);
         }
-        throw new CompressedPixelParserException(boxNotFound(types[0]));
+        throw new CompressedPixelParserException(boxNotFound(type));
     }
 
     private static String boxNotFound(int type) {
@@ -159,6 +168,14 @@ public class MP4Parser implements CompressedPixelParser {
                 (type >> 16) & 0xff,
                 (type >> 8) & 0xff,
                 type & 0xff);
+    }
+
+    private int[] readInts(SeekableByteChannel channel, long end) throws IOException {
+        int[] values = new int[(int) ((end - channel.position()) / 4)];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = readInt(channel);
+        }
+        return values;
     }
 
     private byte readByte(SeekableByteChannel channel) throws IOException {
@@ -199,35 +216,33 @@ public class MP4Parser implements CompressedPixelParser {
 
     private static class Box {
         final int type;
-        final long contentSize;
+        final long end;
 
-        Box(int type, long contentSize) {
+        Box(int type, long end) {
             this.type = type;
-            this.contentSize = contentSize;
+            this.end = end;
         }
     }
 
     private void parseMovieBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
-        parseTrackBox(channel, findBox(channel, end, TrackBoxType));
-        channel.position(end);
+        do {
+            parseTrackBox(channel, findBox(channel, box.end, TrackBoxType));
+        } while (visualSampleEntryType == 0);
+        channel.position(box.end);
     }
 
     private void parseTrackBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
-        parseMediaBox(channel, findBox(channel, end, MediaBoxType));
-        channel.position(end);
+        parseMediaBox(channel, findBox(channel, box.end, MediaBoxType));
+        channel.position(box.end);
     }
 
     private void parseMediaBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
-        parseMediaHeaderBox(channel, findBox(channel, end, MediaHeaderBoxType));
-        parseMediaInformationBox(channel, findBox(channel, end, MediaInformationBoxType));
-        channel.position(end);
+        parseMediaHeaderBox(channel, findBox(channel, box.end, MediaHeaderBoxType));
+        parseMediaInformationBox(channel, findBox(channel, box.end, MediaInformationBoxType));
+        channel.position(box.end);
     }
 
     private void parseMediaHeaderBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         if ((readInt(channel) >>> 24) == 1) {
             creationTime = toDate(readLong(channel));
             modificationTime = toDate(readLong(channel));
@@ -239,79 +254,76 @@ public class MP4Parser implements CompressedPixelParser {
             timescale = readInt(channel);
             duration = readInt(channel) & 0xffffffffL;
         }
-        channel.position(end);
+        channel.position(box.end);
     }
 
     private void parseMediaInformationBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         parseSampleTableBox(channel,
-                findBox(channel, end, SampleTableBoxType));
-        channel.position(end);
+                findBox(channel, box.end, SampleTableBoxType));
+        channel.position(box.end);
     }
 
     private void parseSampleTableBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         parseSampleDescriptionBox(channel,
-                findBox(channel, end, SampleDescriptionBoxType));
+                findBox(channel, box.end, SampleDescriptionBoxType));
         parseSampleSizeBox(channel,
-                findBox(channel, end, SampleSizeBoxType));
-        channel.position(end);
+                findBox(channel, box.end, SampleSizeBoxType));
+        channel.position(box.end);
     }
 
     private void parseSampleDescriptionBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         skip(channel, 8);
-        parseVisualSampleEntry(channel,
-                findBox(channel, end, VisualSampleEntryTypeAVC1, VisualSampleEntryTypeHVC1));
-        channel.position(end);
+        parseVisualSampleEntry(channel, nextBox(channel, box.end));
+        channel.position(box.end);
     }
 
     private void parseVisualSampleEntry(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
+        switch (box.type) {
+            case VisualSampleEntryTypeAVC1:
+                parseVisualSampleEntryHeader(channel, box);
+                parseAvcConfigurationBox(channel,
+                        findBox(channel, box.end, AvcConfigurationBoxType));
+                break;
+            case VisualSampleEntryTypeHVC1:
+                parseVisualSampleEntryHeader(channel, box);
+                parseHevcConfigurationBox(channel,
+                        findBox(channel, box.end, HevcConfigurationBoxType));
+                break;
+        }
+        channel.position(box.end);
+    }
+
+    private void parseVisualSampleEntryHeader(SeekableByteChannel channel, Box box) throws IOException {
         visualSampleEntryType = box.type;
         skip(channel, 24);
         int val = readInt(channel);
         columns = val >>> 16;
         rows = val & 0xffff;
         skip(channel, 50);
-        switch (box.type) {
-            case VisualSampleEntryTypeAVC1:
-                parseAvcConfigurationBox(channel,
-                        findBox(channel, end, AvcConfigurationBoxType));
-                break;
-            case VisualSampleEntryTypeHVC1:
-                parseHevcConfigurationBox(channel,
-                        findBox(channel, end, HevcConfigurationBoxType));
-                break;
-        }
-        channel.position(end);
     }
 
     private void parseAvcConfigurationBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         int val = readInt(channel);
         configurationVersion = val >>> 24;
         profile_idc = (val >> 16) & 0xff;
         level_idc = val & 0xff;
-        channel.position(end);
+        channel.position(box.end);
     }
 
     private void parseHevcConfigurationBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         int val = readShort(channel);
         configurationVersion = val >>> 8;
         profile_idc = val & 0x1F;
         skip(channel, 10);
         level_idc = readByte(channel) & 0xff;
-        channel.position(end);
+        channel.position(box.end);
     }
 
     private void parseSampleSizeBox(SeekableByteChannel channel, Box box) throws IOException {
-        long end = channel.position() + box.contentSize;
         skip(channel, 8);
         numFrames = readInt(channel);
         fp1000s = (int) ((numFrames * 1000L * timescale + (duration >> 1)) / duration);
-        channel.position(end);
+        channel.position(box.end);
     }
 
 }
