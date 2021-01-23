@@ -6,7 +6,8 @@
 
   <groupId>org.dcm4che</groupId>
   <artifactId>dcm4che-parent</artifactId>
-  <version>6.0.0</version>
+  <!--suppress MavenPropertyInParent -->
+  <version>${revision}${changelist}</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -23,6 +24,8 @@
   </modules>
 
   <properties>
+    <revision>6.0.0</revision>
+    <changelist>-SNAPSHOT</changelist>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>13</maven.compiler.release>
     <jakarta.json.version>1.1.5</jakarta.json.version>
@@ -34,6 +37,9 @@
     <janino.version>3.0.6</janino.version>
     <weasis.core.img.version>4.5.0.1</weasis.core.img.version>
     <weasis.opencv.native.version>4.5.0-dcm</weasis.opencv.native.version>
+    <sonar.projectKey>dcm4che6</sonar.projectKey>
+    <sonar.organization>nroduit-github</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
   </properties>
 
   <repositories>
@@ -80,8 +86,64 @@
             <forkCount>0</forkCount>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>flatten-maven-plugin</artifactId>
+          <version>1.2.4</version>
+        </plugin>
+        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself. -->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <versionRange>[1.1.0,)</versionRange>
+                    <goals>
+                      <goal>flatten</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore></ignore>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <configuration>
+          <updatePomFile>true</updatePomFile>
+          <flattenMode>resolveCiFriendliesOnly</flattenMode>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 
   <dependencies>

@@ -5,7 +5,8 @@
   <parent>
     <artifactId>dcm4che-parent</artifactId>
     <groupId>org.dcm4che</groupId>
-    <version>6.0.0</version>
+    <!--suppress MavenPropertyInParent -->
+    <version>${revision}${changelist}</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -15,7 +16,7 @@
     <dependency>
       <groupId>org.dcm4che</groupId>
       <artifactId>dcm4che-dict</artifactId>
-      <version>${project.version}</version>
+      <version>${parent.version}</version>
     </dependency>
   </dependencies>
 
