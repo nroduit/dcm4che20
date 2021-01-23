@@ -84,7 +84,7 @@ public class Dcm2Img implements Callable<Integer> {
 
     public static void main(String[] args) {
         CommandLine cl = new CommandLine(new Dcm2Img());
-        cl.registerConverter(Color.class, s -> hexadecimal2Color(s));
+        cl.registerConverter(Color.class, Dcm2Img::hexadecimal2Color);
         cl.execute(args);
     }
 
@@ -98,8 +98,8 @@ public class Dcm2Img implements Callable<Integer> {
         readParam.setWindowIndex(winIndex);
         readParam.setFillOutsideLutRange(true);
         if(winLevel != null){
-            readParam.setWindowWidth(winLevel[0].doubleValue());
-            readParam.setWindowCenter(winLevel[1].doubleValue());
+            readParam.setWindowWidth(winLevel[0]);
+            readParam.setWindowCenter(winLevel[1]);
         }
         if (prfile != null) {
             readParam.setPresentationState(PrDicomObject.getPresentationState(prfile.toString()));
@@ -124,8 +124,8 @@ public class Dcm2Img implements Callable<Integer> {
     public static Color hexadecimal2Color(String hexColor) {
         int intValue = 0xff000000;
         if (hexColor != null && hexColor.length() > 6) {
-            intValue = (int) (Long.parseLong(hexColor, 16) & 0xffffffff);
-        } else {
+            intValue = (int) (Long.parseLong(hexColor, 16));
+        } else if (hexColor != null) {
             intValue |= Integer.parseInt(hexColor, 16);
         }
         return new Color(intValue, true);
