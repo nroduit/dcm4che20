@@ -46,11 +46,20 @@ public class DicomImageReaderTest {
     @Test
     public void jpeg2000_lossy_multiframe_multifragments() throws Exception {
         List<PlanarImage> imagesIn = readDicomImage("jpeg2000-multiframe-multifragments.dcm");
-        assertEquals(19, imagesIn.size(),
-            "The number of image frames doesn't match");
+        assertEquals(19, imagesIn.size(), "The number of image frames doesn't match");
         for (PlanarImage img : imagesIn) {
-            assertEquals(256, img.width(),
-                    "The image size doesn't match");
+            assertEquals(256, img.width(), "The image size doesn't match");
+        }
+    }
+
+
+    @Test
+    public void ybrFull_RLE() throws Exception {
+        List<PlanarImage> imagesIn = readDicomImage("ybrFull-RLE.dcm");
+        assertEquals(1, imagesIn.size(), "The number of image frames doesn't match");
+        for (PlanarImage img : imagesIn) {
+            assertEquals(640, img.width(), "The image width doesn't match");
+            assertEquals(480, img.height(), "The image height doesn't match");
         }
     }
 }

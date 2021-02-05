@@ -6,6 +6,7 @@ import org.dcm4che6.data.Tag;
 import org.dcm4che6.img.op.MaskArea;
 import org.dcm4che6.img.stream.BytesWithImageDescriptor;
 import org.dcm4che6.img.stream.DicomFileInputStream;
+import org.dcm4che6.img.stream.ImageDescriptor;
 import org.dcm4che6.io.DicomOutputStream;
 import org.opencv.core.CvType;
 import org.opencv.core.MatOfInt;
@@ -106,7 +107,7 @@ public class Transcoder {
      * @throws Exception
      */
     public static Path dcm2dcm(Path srcPath, Path dstPath, DicomTranscodeParam params) throws Exception {
-        Path outPath = null;
+        Path outPath;
         try (DicomImageReader reader = new DicomImageReader(dicomImageReaderSpi)) {
             reader.setInput(new DicomFileInputStream(srcPath));
 
@@ -126,7 +127,8 @@ public class Transcoder {
             String dstTsuid = params.getOutputTsuid();
             DicomJpegWriteParam writeParams = params.getWriteJpegParam();
             int type = CvType.depth(images.get(0).type());
-            String convertibleSyntax = DicomOutputData.adaptSuitableSyntax(dicomMetaData.getImageDescriptor().getBitsStored(), type, dstTsuid);
+            ImageDescriptor desc = dicomMetaData.getImageDescriptor();
+            String convertibleSyntax = DicomOutputData.adaptSuitableSyntax(desc.getBitsStored(), type, dstTsuid);
             if(!dstTsuid.equals(convertibleSyntax)) {
                 dstTsuid = convertibleSyntax;
                 if(!DicomOutputData.isNativeSyntax(dstTsuid)) {
@@ -135,15 +137,14 @@ public class Transcoder {
                 LOGGER.warn("Transcoding into {} is not possible, decompressing {}", dstTsuid, srcPath);
             }
 
-            DicomOutputData imgData = new DicomOutputData(images, dicomMetaData.getImageDescriptor(), dstTsuid);
+            DicomOutputData imgData = new DicomOutputData(images, desc, dstTsuid);
             try (DicomOutputStream dos = new DicomOutputStream(Files.newOutputStream(outPath))) {
                 dos.writeFileMetaInformation(dicomMetaData.getDicomObject().createFileMetaInformation(dstTsuid));
 
                 if (DicomOutputData.isNativeSyntax(dstTsuid)) {
                     imgData.writRawImageData(dos, dataSet);
                 } else {
-                    int[] jpegWriteParams = imgData.adaptTagsToCompressedImage(dataSet, images.get(0),
-                        dicomMetaData.getImageDescriptor(), writeParams);
+                    int[] jpegWriteParams = imgData.adaptTagsToCompressedImage(dataSet, images.get(0), desc, writeParams);
                     imgData.writCompressedImageData(dos, dataSet, jpegWriteParams);
                 }
             } catch (Exception e) {
