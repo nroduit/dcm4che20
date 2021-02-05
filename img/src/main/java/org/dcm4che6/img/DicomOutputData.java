@@ -41,6 +41,9 @@ public class DicomOutputData {
         if (!isSupportedSyntax(tsuid)) {
             throw new IllegalStateException(tsuid + " is not supported as encoding syntax!");
         }
+        if (images.stream().anyMatch(img -> img.width() < 1 || img.height() < 1)) {
+            throw new IllegalStateException("Image is empty!");
+        }
     }
 
     public DicomOutputData(PlanarImage image, ImageDescriptor desc, String tsuid) {
